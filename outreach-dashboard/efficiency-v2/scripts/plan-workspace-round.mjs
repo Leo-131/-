@@ -81,8 +81,11 @@ export function planWorkspace({candidateFile,candidateFiles,researchDir,historyD
 export function compactPlan(plan) {
   return {...plan,rows:plan.rows.map(row=>Object.fromEntries(
     ['company','name','domain','website','websiteUrl','group','groupName','parentCompany',
-      'aliases','companyAliases','groupAliases','providerId','evidenceRevision','evidenceSources','cachedResearch']
-      .filter(key=>row[key]!==undefined).map(key=>[key,row[key]])))};
+      'aliases','companyAliases','groupAliases','providerId','evidenceRevision','evidenceSources','cachedResearch',
+      'country','countryMarket','industry','description','keywords','role']
+      .filter(key=>row[key]!==undefined).map(key=>[key,
+        ['description','industry','role'].includes(key)?String(row[key]).slice(0,240):
+        key==='keywords'?(Array.isArray(row[key])?row[key].filter(x=>typeof x==='string').slice(0,8).map(x=>x.slice(0,80)):[]):row[key]])))};
 }
 // Small research-only execution packet. Always regenerate from fresh history;
 // never use an offset/checkpoint to bypass newly recorded company/group locks.
@@ -90,6 +93,8 @@ export function executionPacket(plan, size=10) {
   if (!Number.isInteger(size) || size<1 || size>100) throw Error('Packet size must be an integer from 1 to 100');
   const compact=compactPlan(plan);
   return {...compact,rows:compact.rows.slice(0,size),
+    researchTasks:compact.rows.slice(0,size).map(row=>globalThis.OutreachEfficiency.verificationTask(row)),
+    researchPolicy:globalThis.OutreachEfficiency.researchPolicy,
     packet:{totalPending:compact.rows.length,returned:Math.min(size,compact.rows.length),
       deferred:Math.max(0,compact.rows.length-size),refreshBeforeNextPacket:true,
       eligibleToSend:false}};

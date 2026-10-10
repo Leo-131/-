@@ -195,5 +195,26 @@
     return rows.map((row,position)=>({row,position,tier:tier(row)}))
       .sort((a,b)=>b.tier-a.tier||a.position-b.position).map(item=>item.row);
   }
-  root.OutreachEfficiency = {identityKeys, researchIndex, researchFor, modelClient, researchBatch, prioritizeResearch, researchContext, prioritizeVerification};
+  // Compact next-action facts only. Cached or provider facts never satisfy live gates.
+  // Do not guess contact/product URLs, infer geography from TLDs, or expose raw fields.
+  const researchPolicy=Object.freeze({
+    requiredLiveChecks:Object.freeze(['daily-agency-region','current-product-and-buyer-role',
+      'public-contact-source','canonical-ICP>70','company-and-group-CRM-and-mail-dedup']),
+    onPrimarySourceFailure:'record-reason-and-switch-candidate',
+    trust:'research-routing-only',eligibleToSend:false});
+  function verificationTask(row) {
+    const facts=row?.cachedResearch;
+    const sourceUrls=(facts?.sourceUrls || []).slice(0,6);
+    const contactCandidates=(facts?.contactCandidates || []).slice(0,3);
+    return {company:row.company || row.name || '',
+      ...(row.country || row.countryMarket?{country:row.country || row.countryMarket}:{}),
+      ...(sourceUrls.length?{sourceUrls}:{}),
+      ...(contactCandidates.length?{contactCandidates}:{}),
+      ...(facts?.contactConflict===true?{contactConflict:true}:{}),
+      missingCachedLeads:[...(!sourceUrls.length?['official-source']:[]),
+        ...(!contactCandidates.length?['public-business-contact']:[]),
+        ...(!row.country&&!row.countryMarket?['country']:[])],
+      eligibleToSend:false};
+  }
+  root.OutreachEfficiency = {identityKeys, researchIndex, researchFor, modelClient, researchBatch, prioritizeResearch, researchContext, prioritizeVerification, verificationTask, researchPolicy};
 })(typeof window !== 'undefined' ? window : globalThis);
