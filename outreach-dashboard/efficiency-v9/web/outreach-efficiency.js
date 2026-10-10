@@ -102,7 +102,8 @@
           historical:state.some(status=>outcomeBlocks.has(status)),
           // Explicit cache no-retry flags also cover legacy custom status names.
           // Never infer eligibility from a name, a score, or a source URL alone.
-          parked:row.retryWithoutNewEvidence===false || state.some(status=>parked.has(status)), sources:sources(row)});
+          parked:row.retryWithoutNewEvidence===false || row.reResearchWithoutNewEvidence===false
+            || state.some(status=>parked.has(status)), sources:sources(row)});
       }
       return metadata.get(row);
     }
