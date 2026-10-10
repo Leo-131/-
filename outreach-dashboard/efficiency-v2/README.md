@@ -10,3 +10,8 @@ The v10 local preflight additionally supports `--packet-size 10` to bound the
 next research packet after the complete batch safety preflight. It refreshes
 all local history each time; packets are not send-qualified. This reduces output
 volume, not a measured end-to-end execution time. Never publish packet contents.
+
+Use `--tasks-only` for a lean execution context with no duplicated row prose.
+Exact company/group identities, conflicts and live checks are retained. This is
+not authorization to send and does not establish eligibility. The private source
+package uses this format in its `outreach:preflight` script.
