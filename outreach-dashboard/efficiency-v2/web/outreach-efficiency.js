@@ -75,11 +75,11 @@
   // Cheap ordering only, never eligibility or ICP. No network/model calls.
   function prioritizeResearch(candidates) {
     return candidates.map((row,position)=>{
-      const text=[row?.company,row?.name,row?.description,row?.industry,
+      const text=[row?.company,row?.name,row?.description,row?.industry,row?.role,
         ...(Array.isArray(row?.keywords)?row.keywords:[])].join(' ').toLowerCase();
       const product=/\b(camping|outdoor|hiking|portable power|power bank|powerbank|camp lights?|portable pumps?)\b/.test(text);
       const channel=/\b(retail|distribut\w*|wholesale|import\w*|electronics|trading)\b/.test(text);
-      const weak=/\b(bank|banking|real estate|restaurant|hotel|tourism|insurance)\b/.test(text);
+      const weak=/\b(bank|banking|real estate|restaurant|hotel|tourism|insurance|school|academy|university|construction|contracting|fitness club|golf club|training)\b/.test(text);
       return {row,position,priority:(product?4:0)+(channel?2:0)-(weak&&!product?3:0)};
     }).sort((a,b)=>b.priority-a.priority||a.position-b.position).map(item=>item.row);
   }
@@ -201,6 +201,9 @@
     requiredLiveChecks:Object.freeze(['daily-agency-region','current-product-and-buyer-role',
       'public-contact-source','canonical-ICP>70','company-and-group-CRM-and-mail-dedup']),
     onPrimarySourceFailure:'record-reason-and-switch-candidate',
+    verificationOrder:Object.freeze(['current-product-and-buyer-role','public-contact-source',
+      'canonical-ICP-and-live-safety-gates']),
+    onRoleOrProductMismatch:'record-primary-evidence-and-switch-before-contact-enrichment',
     trust:'research-routing-only',eligibleToSend:false});
   function verificationTask(row) {
     const facts=row?.cachedResearch;

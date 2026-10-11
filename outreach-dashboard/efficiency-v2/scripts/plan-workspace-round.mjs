@@ -91,12 +91,14 @@ export function compactPlan(plan) {
 // never use an offset/checkpoint to bypass newly recorded company/group locks.
 export function executionPacket(plan, size=10, tasksOnly=false) {
   if (!Number.isInteger(size) || size<1 || size>100) throw Error('Packet size must be an integer from 1 to 100');
-  const compact=compactPlan(plan);
-  const packet = {...compact,rows:compact.rows.slice(0,size),
-    researchTasks:compact.rows.slice(0,size).map(row=>globalThis.OutreachEfficiency.verificationTask(row)),
+  // Compact only the current packet after the complete safety preflight.
+  const totalPending=plan.rows.length;
+  const compact=compactPlan({...plan,rows:plan.rows.slice(0,size)});
+  const packet = {...compact,rows:compact.rows,
+    researchTasks:compact.rows.map(row=>globalThis.OutreachEfficiency.verificationTask(row)),
     researchPolicy:globalThis.OutreachEfficiency.researchPolicy,
-    packet:{totalPending:compact.rows.length,returned:Math.min(size,compact.rows.length),
-      deferred:Math.max(0,compact.rows.length-size),refreshBeforeNextPacket:true,
+    packet:{totalPending,returned:compact.rows.length,
+      deferred:Math.max(0,totalPending-size),refreshBeforeNextPacket:true,
       eligibleToSend:false}};
   if (tasksOnly) {
     // Avoid sending the same source/contact context twice to the executor.

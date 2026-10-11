@@ -15,3 +15,8 @@ Use `--tasks-only` for a lean execution context with no duplicated row prose.
 Exact company/group identities, conflicts and live checks are retained. This is
 not authorization to send and does not establish eligibility. The private source
 package uses this format in its `outreach:preflight` script.
+
+The 2026-10-11 lean-research update ranks supplied buyer roles before low-fit
+service seeds, without excluding any candidate. Verify current product fit and
+buyer role before contact enrichment. Packet compaction only touches the current
+slice after full safety preflight. No measured end-to-end speedup is claimed.
