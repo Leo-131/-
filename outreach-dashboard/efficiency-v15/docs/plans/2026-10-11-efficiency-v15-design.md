@@ -23,3 +23,8 @@ queue and digest, fresh locks, duplicate inputs and missing research files.
 
 Publish the tested source to the existing owner-private Site without widening its
 audience. No raw customer data or credentials go to the public GitHub repository.
+
+Deployment recovery: isolated Node v24.14.0 `fs.cpSync` on the existing Windows
+web tree exited with -1073740791. Replace recursive native copying with explicit
+directory traversal and file copying, reject symlinks and propagate failures.
+Validate binary content, repeated output updates and the resulting Worker entry.
