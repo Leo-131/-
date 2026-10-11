@@ -73,18 +73,26 @@
     return {generate};
   }
   // Cheap ordering only, never eligibility or ICP. No network/model calls.
-  function prioritizeResearch(candidates) {
-    return candidates.map((row,position)=>{
+  function researchPriority(row) {
       const text=[row?.company,row?.name,row?.description,row?.industry,row?.role,
         ...(Array.isArray(row?.keywords)?row.keywords:[])].join(' ').toLowerCase();
       const product=/\b(camping|outdoor|hiking|portable power|power bank|powerbank|camp lights?|portable pumps?)\b/.test(text);
-      const channel=/\b(retail|distribut\w*|wholesale|import\w*|electronics|trading)\b/.test(text);
-      const weak=/\b(bank|banking|real estate|restaurant|hotel|tourism|insurance|school|academy|university|construction|contracting|fitness club|golf club|training)\b/.test(text);
-      return {row,position,priority:(product?4:0)+(channel?2:0)-(weak&&!product?3:0)};
-    }).sort((a,b)=>b.priority-a.priority||a.position-b.position).map(item=>item.row);
+      const channel=/\b(retail\w*|distribut\w*|wholesale\w*|import\w*|trading)\b/.test(text);
+      const adjacent=/\b(electronics|appliances|consumer goods)\b/.test(text);
+      const weak=/\b(bank|banking|real estate|properties|interiors|mep|exhibition|institute|restaurant|hotel\w*|tourism|tour operator|safari tours?|insurance|school|academy|university|construction|contracting|fitness club|golf club|training)\b/.test(text);
+      // Provider descriptions are unverified routing clues. An outdoor tour is
+      // not a retail channel; keep it available, but do not enrich it first.
+      return {priority:(product?4:0)+(channel?3:0)+(adjacent?1:0)-(weak?8:0),
+        signals:[...(product?['product-keyword']:[]),...(channel?['channel-keyword']:[]),
+          ...(adjacent?['adjacent-category']:[]),...(weak?['non-channel-keyword']:[])],
+        trust:'unverified-routing-only',eligibleToSend:false};
+  }
+  function prioritizeResearch(candidates) {
+    return candidates.map((row,position)=>({row,position,...researchPriority(row)}))
+    .sort((a,b)=>b.priority-a.priority||a.position-b.position).map(item=>item.row);
   }
   // Planning is not sending. A source failure stays parked until evidence changes.
-  function researchBatch(candidates, {keys, blocked, research = [], limit = 100}) {
+  function researchBatch(candidates, {keys, blocked, research = [], limit = 100, screenOnly = false}) {
     const seen = new Set(), cached = new Map(), rows = [], counts = {historical:0,duplicate:0,parked:0};
     const parked = new Set(['excluded','source_failed','evidence_insufficient','parked','identity_mismatch']);
     const outcomeBlocks = new Set(['sent_confirmed','submitted_confirmed','send_unconfirmed',
@@ -102,7 +110,8 @@
           historical:state.some(status=>outcomeBlocks.has(status)),
           // Explicit cache no-retry flags also cover legacy custom status names.
           // Never infer eligibility from a name, a score, or a source URL alone.
-          parked:row.retryWithoutNewEvidence===false || state.some(status=>parked.has(status)), sources:sources(row)});
+          parked:row.retryWithoutNewEvidence===false || row.reResearchWithoutNewEvidence===false
+            || state.some(status=>parked.has(status)), sources:sources(row)});
       }
       return metadata.get(row);
     }
@@ -131,15 +140,32 @@
           previous.some(bucket => bucket.historical)) {
         counts.historical++;continue;
       }
-      if (identity.some(key=>seen.has(key))) {counts.duplicate++;continue;}
+      if (!screenOnly && identity.some(key=>seen.has(key))) {counts.duplicate++;continue;}
       if (current.parked || previous.some(bucket =>
           [...bucket.parked].some(item => !newEvidence(row,item)))) {
         counts.parked++;continue;
       }
       identity.forEach(key=>seen.add(key));rows.push(row);
-      if (rows.length >= Math.min(100,Math.max(1,Number(limit)||100))) break;
+      if (!screenOnly && rows.length >= Math.min(100,Math.max(1,Number(limit)||100))) break;
     }
     return {rows,counts,sendPerformed:false,requiresLiveVerification:true};
+  }
+  // One synchronous snapshot: screen locks before enrichment, then dedup survivors.
+  // Never reuse across invocations; fresh receipts must take effect immediately.
+  function researchPlan(candidates, options) {
+    const screened=researchBatch(candidates,{...options,screenOnly:true});
+    const ordered=prioritizeVerification(prioritizeResearch(researchContext(screened.rows,options.research||[])));
+    const seen=new Set(),rows=[];let duplicate=0;
+    const cap=Math.min(100,Math.max(1,Number(options.limit)||100));
+    for(const row of ordered) {
+      const keys=options.keys(row).filter(Boolean);
+      if(keys.some(key=>seen.has(key))){duplicate++;continue;}
+      keys.forEach(key=>seen.add(key));rows.push(row);
+      if(rows.length>=cap)break;
+    }
+    return {rows,counts:{...screened.counts,duplicate},sendPerformed:false,
+      requiresLiveVerification:true,preflightWork:{candidateRows:candidates.length,
+        contextRows:screened.rows.length,skippedContextRows:candidates.length-screened.rows.length}};
   }
   // Carry bounded existing facts into the next packet, not into send authorization.
   // Group-only matches remain locks; a subsidiary must not inherit another firm's contact.
@@ -198,6 +224,8 @@
   // Compact next-action facts only. Cached or provider facts never satisfy live gates.
   // Do not guess contact/product URLs, infer geography from TLDs, or expose raw fields.
   const researchPolicy=Object.freeze({
+    preflightOrder:'permanent-and-cache-locks-before-context-enrichment',
+    keywordIntentMeaning:'category-relevance-proxy-not-expressed-purchase-intent',
     requiredLiveChecks:Object.freeze(['daily-agency-region','current-product-and-buyer-role',
       'public-contact-source','canonical-ICP>70','company-and-group-CRM-and-mail-dedup']),
     onPrimarySourceFailure:'record-reason-and-switch-candidate',
@@ -219,5 +247,5 @@
         ...(!row.country&&!row.countryMarket?['country']:[])],
       eligibleToSend:false};
   }
-  root.OutreachEfficiency = {identityKeys, researchIndex, researchFor, modelClient, researchBatch, prioritizeResearch, researchContext, prioritizeVerification, verificationTask, researchPolicy};
+  root.OutreachEfficiency = {identityKeys, researchIndex, researchFor, modelClient, researchBatch, researchPlan, researchPriority, prioritizeResearch, researchContext, prioritizeVerification, verificationTask, researchPolicy};
 })(typeof window !== 'undefined' ? window : globalThis);

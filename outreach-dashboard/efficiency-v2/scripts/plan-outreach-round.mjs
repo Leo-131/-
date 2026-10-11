@@ -8,9 +8,9 @@ export function planRound({candidates=[],research=[],history=[],limit=100}) {
   const guard=globalThis.OutreachQueueGuard;
   const index=guard.build(history,identityKeys);
   const efficiency=globalThis.OutreachEfficiency;
-  const ordered=efficiency.prioritizeVerification(efficiency.prioritizeResearch(
-    efficiency.researchContext(candidates,research)));
-  const plan=globalThis.OutreachEfficiency.researchBatch(ordered,{
+  // Screen all immutable locks before joining/serializing cached source details.
+  // Do not deduplicate here: ordering must still choose the best alias seed.
+  const plan=efficiency.researchPlan(candidates,{
     keys:identityKeys,blocked:row=>guard.blocked(row,index,identityKeys),research,limit
   });
   return {...plan,
