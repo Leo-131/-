@@ -80,11 +80,18 @@
       const channel=/\b(retail\w*|distribut\w*|wholesale\w*|import\w*|trading)\b/.test(text);
       const adjacent=/\b(electronics|appliances|consumer goods)\b/.test(text);
       const weak=/\b(bank|banking|real estate|properties|interiors|mep|exhibition|institute|restaurant|hotel\w*|tourism|tour operator|safari tours?|insurance|school|academy|university|construction|contracting|fitness club|golf club|training)\b/.test(text);
+      // Observed category drift: installed AV/automation, repair and industrial
+      // suppliers consume source reads without proving a portable retail channel.
+      // This is routing only: preserve every row and allow genuine product/channel
+      // clues to override the penalty. Never infer an exclusion or ICP from it.
+      const installed=/\b(home automation|smart home|building automation|digital signage|video wall|videowall|electromechanical|ship chandl\w*|oil and gas|device repair|phone repair|facilities management|av integrat\w*)\b/.test(text);
+      const drift=installed && !(product && channel);
       // Provider descriptions are unverified routing clues. An outdoor tour is
       // not a retail channel; keep it available, but do not enrich it first.
-      return {priority:(product?4:0)+(channel?3:0)+(adjacent?1:0)-(weak?8:0),
+      return {priority:(product?4:0)+(channel?3:0)+(adjacent?1:0)-(weak?8:0)-(drift?6:0),
         signals:[...(product?['product-keyword']:[]),...(channel?['channel-keyword']:[]),
-          ...(adjacent?['adjacent-category']:[]),...(weak?['non-channel-keyword']:[])],
+          ...(adjacent?['adjacent-category']:[]),...(weak?['non-channel-keyword']:[]),
+          ...(drift?['installed-or-industrial-routing-clue']:[])],
         trust:'unverified-routing-only',eligibleToSend:false};
   }
   function prioritizeResearch(candidates) {
@@ -251,5 +258,39 @@
         ...(!row.country&&!row.countryMarket?['country']:[])],
       eligibleToSend:false};
   }
-  root.OutreachEfficiency = {identityKeys, researchIndex, researchFor, modelClient, researchBatch, researchPlan, researchPriority, prioritizeResearch, researchContext, prioritizeVerification, verificationTask, researchPolicy};
+  // Research navigation hints, never official evidence or permission to send.
+  // References preserve every company when several candidates share one URL.
+  function sourceBatches(rows, size=4) {
+    if (!Number.isInteger(size) || size<1 || size>4) throw Error('Source batch size must be 1 to 4');
+    const sources=new Map(), unresolved=[];
+    rows.forEach((row, taskIndex)=>{
+      const hints=[...(row.cachedResearch?.sourceUrls || []),row.website,row.websiteUrl,row.domain];
+      let source;
+      for (const hint of hints) {
+        if (typeof hint!=='string' || !hint.trim()) continue;
+        try {
+          const u=new URL(/^[a-z][a-z0-9+.-]*:/i.test(hint)?hint:'https://'+hint);
+          if (!['https:','http:'].includes(u.protocol) || u.username || u.password
+              || [...u.searchParams.keys()].some(k=>/token|secret|password|api.?key/i.test(k))
+              || u.port || !u.hostname.includes('.') || /^\d+\.\d+\.\d+\.\d+$/.test(u.hostname)
+              || /(^|\.)(localhost|local|internal)$/.test(u.hostname) || u.hostname.includes(':')) continue;
+          u.hash=''; source=u.href; break;
+        } catch {}
+      }
+      if (!source) { unresolved.push(taskIndex); return; }
+      if (!sources.has(source)) sources.set(source, {url:source,taskIndexes:[]});
+      sources.get(source).taskIndexes.push(taskIndex);
+    });
+    const entries=[...sources.values()],batches=[];
+    for(let i=0;i<entries.length;i+=size)batches.push(entries.slice(i,i+size));
+    return {batches,unresolvedTaskIndexes:unresolved,
+      hintsOnly:true,eligibleToSend:false,onFailure:'record-reason-and-switch-candidate',
+      readPolicy:{mode:'independent-read-only-requests',maxConcurrent:size,
+        requestsPerSource:1,output:'compact-product-role-contact-evidence',
+        metadataOnly:'one-focused-read-if-no-explicit-source-failure',
+        explicitFailure:'persist-reason-no-repeat-without-new-evidence',
+        controlBoundary:'no-browser-writes-or-sends-in-parallel'},
+      readyCandidatePolicy:'send-after-live-checks-without-waiting-for-batch'};
+  }
+  root.OutreachEfficiency = {identityKeys, researchIndex, researchFor, modelClient, researchBatch, researchPlan, researchPriority, prioritizeResearch, researchContext, prioritizeVerification, verificationTask, researchPolicy, sourceBatches};
 })(typeof window !== 'undefined' ? window : globalThis);

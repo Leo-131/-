@@ -132,7 +132,7 @@ export function compactPlan(plan) {
 }
 // Small research-only execution packet. Always regenerate from fresh history;
 // never use an offset/checkpoint to bypass newly recorded company/group locks.
-export function executionPacket(plan, size=10, tasksOnly=false) {
+export function executionPacket(plan, size=20, tasksOnly=false, withSourceBatches=false) {
   if (!Number.isInteger(size) || size<1 || size>100) throw Error('Packet size must be an integer from 1 to 100');
   // Compact only the current packet. Deferred rows are counted, not inspected or
   // serialized again; the complete preflight above still sees every input lock.
@@ -144,6 +144,7 @@ export function executionPacket(plan, size=10, tasksOnly=false) {
     packet:{totalPending,returned:compact.rows.length,
       deferred:Math.max(0,totalPending-size),refreshBeforeNextPacket:true,
       eligibleToSend:false}};
+  if (withSourceBatches) packet.sourceBatches=globalThis.OutreachEfficiency.sourceBatches(compact.rows);
   if (tasksOnly) {
     // Avoid sending the same source/contact context twice to the executor.
     // Preserve exact identities for live CRM/mailbox checks, not send approval.
@@ -159,10 +160,11 @@ function identityForTask(row) {
     'aliases','companyAliases','groupAliases','providerId'].filter(k=>row[k]!==undefined).map(k=>[k,row[k]]));
 }
 if (process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href) {
-  const args=process.argv.slice(2),options={candidateFiles:[]};let compact=false,packetSize,tasksOnly=false;
+  const args=process.argv.slice(2),options={candidateFiles:[]};let compact=false,packetSize,tasksOnly=false,withSourceBatches=false;
   for (let i=0;i<args.length;i++) {
     if(args[i]==='--compact'){compact=true;continue;}
     if(args[i]==='--tasks-only'){tasksOnly=true;continue;}
+    if(args[i]==='--source-batches'){withSourceBatches=true;continue;}
     if(args[i]==='--packet-size'){packetSize=Number(args[++i]);continue;}
     const key={'--candidates':'candidateFile','--research-dir':'researchDir','--history-dir':'historyDir','--limit':'limit'}[args[i]];
     if(!key || !args[i+1] || args[i+1].startsWith('--'))throw Error('Use --candidates file --research-dir directory --history-dir directory [--limit 100] [--compact]');
@@ -171,8 +173,9 @@ if (process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href) {
   }
   if (!options.candidateFiles.length||!options.researchDir||!options.historyDir)throw Error('All three input sources are required');
   if (tasksOnly && compact) throw Error('--tasks-only cannot be combined with --compact');
+  if (withSourceBatches && compact) throw Error('--source-batches cannot be combined with --compact');
   const plan=await planWorkspaceAsync(options);
   // Normal executions emit only the next research packet. --compact explicitly
   // retains the full pending queue for audit/export, not routine execution.
-  console.log(JSON.stringify(packetSize!==undefined?executionPacket(plan,packetSize,tasksOnly):compact?compactPlan(plan):executionPacket(plan,10,tasksOnly)));
+  console.log(JSON.stringify(packetSize!==undefined?executionPacket(plan,packetSize,tasksOnly,withSourceBatches):compact?compactPlan(plan):executionPacket(plan,20,tasksOnly,withSourceBatches)));
 }
