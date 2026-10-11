@@ -73,18 +73,26 @@
     return {generate};
   }
   // Cheap ordering only, never eligibility or ICP. No network/model calls.
-  function prioritizeResearch(candidates) {
-    return candidates.map((row,position)=>{
-      const text=[row?.company,row?.name,row?.description,row?.industry,
+  function researchPriority(row) {
+      const text=[row?.company,row?.name,row?.description,row?.industry,row?.role,
         ...(Array.isArray(row?.keywords)?row.keywords:[])].join(' ').toLowerCase();
       const product=/\b(camping|outdoor|hiking|portable power|power bank|powerbank|camp lights?|portable pumps?)\b/.test(text);
-      const channel=/\b(retail|distribut\w*|wholesale|import\w*|electronics|trading)\b/.test(text);
-      const weak=/\b(bank|banking|real estate|restaurant|hotel|tourism|insurance)\b/.test(text);
-      return {row,position,priority:(product?4:0)+(channel?2:0)-(weak&&!product?3:0)};
-    }).sort((a,b)=>b.priority-a.priority||a.position-b.position).map(item=>item.row);
+      const channel=/\b(retail\w*|distribut\w*|wholesale\w*|import\w*|trading)\b/.test(text);
+      const adjacent=/\b(electronics|appliances|consumer goods)\b/.test(text);
+      const weak=/\b(bank|banking|real estate|properties|interiors|mep|exhibition|institute|restaurant|hotel\w*|tourism|tour operator|safari tours?|insurance|school|academy|university|construction|contracting|fitness club|golf club|training)\b/.test(text);
+      // Provider descriptions are unverified routing clues. An outdoor tour is
+      // not a retail channel; keep it available, but do not enrich it first.
+      return {priority:(product?4:0)+(channel?3:0)+(adjacent?1:0)-(weak?8:0),
+        signals:[...(product?['product-keyword']:[]),...(channel?['channel-keyword']:[]),
+          ...(adjacent?['adjacent-category']:[]),...(weak?['non-channel-keyword']:[])],
+        trust:'unverified-routing-only',eligibleToSend:false};
+  }
+  function prioritizeResearch(candidates) {
+    return candidates.map((row,position)=>({row,position,...researchPriority(row)}))
+    .sort((a,b)=>b.priority-a.priority||a.position-b.position).map(item=>item.row);
   }
   // Planning is not sending. A source failure stays parked until evidence changes.
-  function researchBatch(candidates, {keys, blocked, research = [], limit = 100}) {
+  function researchBatch(candidates, {keys, blocked, research = [], limit = 100, screenOnly = false}) {
     const seen = new Set(), cached = new Map(), rows = [], counts = {historical:0,duplicate:0,parked:0};
     const parked = new Set(['excluded','source_failed','evidence_insufficient','parked','identity_mismatch']);
     const outcomeBlocks = new Set(['sent_confirmed','submitted_confirmed','send_unconfirmed',
@@ -132,15 +140,95 @@
           previous.some(bucket => bucket.historical)) {
         counts.historical++;continue;
       }
-      if (identity.some(key=>seen.has(key))) {counts.duplicate++;continue;}
+      if (!screenOnly && identity.some(key=>seen.has(key))) {counts.duplicate++;continue;}
       if (current.parked || previous.some(bucket =>
           [...bucket.parked].some(item => !newEvidence(row,item)))) {
         counts.parked++;continue;
       }
       identity.forEach(key=>seen.add(key));rows.push(row);
-      if (rows.length >= Math.min(100,Math.max(1,Number(limit)||100))) break;
+      if (!screenOnly && rows.length >= Math.min(100,Math.max(1,Number(limit)||100))) break;
     }
     return {rows,counts,sendPerformed:false,requiresLiveVerification:true};
   }
-  root.OutreachEfficiency = {identityKeys, researchIndex, researchFor, modelClient, researchBatch, prioritizeResearch};
+  // Carry bounded existing facts into the next packet, not into send authorization.
+  // Group-only matches remain locks; a subsidiary must not inherit another firm's contact.
+  function researchContext(rows, research) {
+    const index=new Map();
+    const directKeys=row=>identityKeys({...row,group:undefined,groupName:undefined,
+      parentCompany:undefined,groupAliases:[],taskId:undefined,task_id:undefined,
+      id:undefined,automationTaskId:undefined});
+    for(const record of research) {
+      if(!record || typeof record!=='object')continue;
+      for(const key of directKeys(record)) {
+        if(!index.has(key))index.set(key,new Set());
+        index.get(key).add(record);
+      }
+    }
+    const cleanUrl=value=>{
+      try {const url=new URL(value);
+        return /^https?:$/.test(url.protocol)&&!url.username&&!url.password
+          && ![...url.searchParams.keys()].some(k=>/token|secret|password|api.?key/i.test(k))?url.href:null;
+      }catch{return null;}
+    };
+    return rows.map(row=>{
+      const matches=new Set(directKeys(row).flatMap(key=>[...(index.get(key)||[])]));
+      if(!matches.size)return {...row};
+      const sources=new Set(),emails=new Set(),scores=new Set();
+      for(const record of matches) {
+        for(const value of [...(Array.isArray(record.sources)?record.sources:[]),
+          ...(Array.isArray(record.evidenceSources)?record.evidenceSources:[])]) {
+          const url=cleanUrl(value);if(url)sources.add(url);
+        }
+        for(const key of ['publicEmail','publicBusinessEmail','contactEmail','email']) {
+          const value=String(record[key]||'').trim().toLowerCase();
+          if(/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(value))emails.add(value);
+        }
+        const score=record.icpScore??record.icp;
+        if(typeof score==='number'&&Number.isFinite(score)&&score>=0&&score<=100)scores.add(score);
+      }
+      return {...row,cachedResearch:{matchedRecords:matches.size,
+        sourceUrls:[...sources].slice(0,6),sourceCount:sources.size,
+        contactCandidates:[...emails].slice(0,3),contactConflict:emails.size>1,
+        observedScores:[...scores].slice(0,3),scoreConflict:scores.size>1,
+        trust:'cached-leads-only-live-validation-required',eligibleToSend:false}};
+    });
+  }
+  // Verify existing source/contact leads first, never treat cached scores as gates.
+  // Stable order preserves product/channel ordering within each evidence tier.
+  function prioritizeVerification(rows) {
+    const tier=row=>{
+      const facts=row?.cachedResearch;
+      if(!facts || facts.contactConflict || facts.scoreConflict)return 0;
+      return facts.sourceUrls?.length ? (facts.contactCandidates?.length ? 2 : 1) : 0;
+    };
+    return rows.map((row,position)=>({row,position,tier:tier(row)}))
+      .sort((a,b)=>b.tier-a.tier||a.position-b.position).map(item=>item.row);
+  }
+  // Compact next-action facts only. Cached or provider facts never satisfy live gates.
+  // Do not guess contact/product URLs, infer geography from TLDs, or expose raw fields.
+  const researchPolicy=Object.freeze({
+    preflightOrder:'permanent-and-cache-locks-before-context-enrichment',
+    keywordIntentMeaning:'category-relevance-proxy-not-expressed-purchase-intent',
+    requiredLiveChecks:Object.freeze(['daily-agency-region','current-product-and-buyer-role',
+      'public-contact-source','canonical-ICP>70','company-and-group-CRM-and-mail-dedup']),
+    onPrimarySourceFailure:'record-reason-and-switch-candidate',
+    verificationOrder:Object.freeze(['current-product-and-buyer-role','public-contact-source',
+      'canonical-ICP-and-live-safety-gates']),
+    onRoleOrProductMismatch:'record-primary-evidence-and-switch-before-contact-enrichment',
+    trust:'research-routing-only',eligibleToSend:false});
+  function verificationTask(row) {
+    const facts=row?.cachedResearch;
+    const sourceUrls=(facts?.sourceUrls || []).slice(0,6);
+    const contactCandidates=(facts?.contactCandidates || []).slice(0,3);
+    return {company:row.company || row.name || '',
+      ...(row.country || row.countryMarket?{country:row.country || row.countryMarket}:{}),
+      ...(sourceUrls.length?{sourceUrls}:{}),
+      ...(contactCandidates.length?{contactCandidates}:{}),
+      ...(facts?.contactConflict===true?{contactConflict:true}:{}),
+      missingCachedLeads:[...(!sourceUrls.length?['official-source']:[]),
+        ...(!contactCandidates.length?['public-business-contact']:[]),
+        ...(!row.country&&!row.countryMarket?['country']:[])],
+      eligibleToSend:false};
+  }
+  root.OutreachEfficiency = {identityKeys, researchIndex, researchFor, modelClient, researchBatch, researchPriority, prioritizeResearch, researchContext, prioritizeVerification, verificationTask, researchPolicy};
 })(typeof window !== 'undefined' ? window : globalThis);
