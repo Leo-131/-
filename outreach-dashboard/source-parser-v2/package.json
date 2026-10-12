@@ -1,0 +1,20 @@
+{
+  "name": "flextail-customer-workspace",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/preview.mjs",
+    "test": "node --test --test-concurrency=2 tests/*.test.mjs && node scripts/diagnose-customers.mjs",
+    "db:generate": "drizzle-kit generate",
+    "outreach:evidence": "node scripts/compact-source-evidence.mjs",
+    "outreach:preflight": "node scripts/plan-workspace-round.mjs --tasks-only --source-batches --lean --packet-size 20"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.2"
+  },
+  "devDependencies": {
+    "drizzle-kit": "0.31.10",
+    "jsdom": "26.1.0"
+  }
+}
