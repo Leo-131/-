@@ -14,6 +14,8 @@ const historyFiles = {
   'google-lead-discovery-latest.js':'GOOGLE_LEAD_DISCOVERY_LATEST'
 };
 const siteHistoryFiles = {
+  'autonomous-outreach-results.js':'AUTONOMOUS_OUTREACH_RESULTS',
+  'google-lead-discovery-latest.js':'GOOGLE_LEAD_DISCOVERY_LATEST',
   'browser-verified-outreach.js':'AUTONOMOUS_OUTREACH_RESULTS',
   'september-reconciliation.js':'SEPTEMBER_RECONCILIATION'
 };
@@ -231,8 +233,8 @@ if (process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href) {
   if (tasksOnly && compact) throw Error('--tasks-only cannot be combined with --compact');
   if (withSourceBatches && compact) throw Error('--source-batches cannot be combined with --compact');
   if (lean && !tasksOnly) throw Error('--lean requires --tasks-only');
-  // Routine production CLI must retain the private Site's verified social and
-  // mailbox overlays, even when the desktop snapshot omits those old receipts.
+  // Routine production CLI retains private source receipts/discovery history
+  // and verified social/mailbox overlays if a desktop export is replaced.
   // This is a local source path, never a fetch or a send-authorizing snapshot.
   options.siteHistoryDir ||= fileURLToPath(new URL('../web/',import.meta.url));
   const plan=await planWorkspaceAsync(options);

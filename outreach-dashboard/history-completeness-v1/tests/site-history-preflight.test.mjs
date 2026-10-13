@@ -11,6 +11,8 @@ function fixture(t) {
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'site-history-preflight-'));
   t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
   const site=path.join(dir,'site'); fs.mkdirSync(site);
+  fs.writeFileSync(path.join(site,'autonomous-outreach-results.js'),'window.AUTONOMOUS_OUTREACH_RESULTS=[];');
+  fs.writeFileSync(path.join(site,'google-lead-discovery-latest.js'),'window.GOOGLE_LEAD_DISCOVERY_LATEST=[];');
   const exports={'autonomous-outreach-results.js':'AUTONOMOUS_OUTREACH_RESULTS',
     'linkedin-connection-results-latest.js':'LINKEDIN_CONNECTION_RESULTS_LATEST',
     'daily-automation-execution-latest.js':'DAILY_AUTOMATION_EXECUTION_LATEST',
@@ -33,7 +35,7 @@ test('site overlays close desktop-history gaps across channels, groups and unkno
   assert.deepEqual(a.rows.map(r=>r.company),['Fresh']);
   assert.deepEqual(b.rows.map(r=>r.company),['Fresh']);
   assert.equal(a.counts.historical,4);assert.equal(a.inputs.historyRows,4);
-  assert.equal(a.inputs.historySupplementFiles,2);
+  assert.equal(a.inputs.historySupplementFiles,4);
   assert.equal(a.sendPerformed,false);assert.equal(a.requiresLiveVerification,true);
   assert.equal(input.historySupplements,undefined);
   assert.equal(a.inputs.snapshotDigest,b.inputs.snapshotDigest);
@@ -61,16 +63,16 @@ test('missing or malformed known site overlay fails closed; empty named array is
 test('explicit overlay supplements are not read twice and CLI requires the site history',t=>{
   const input=fixture(t);
   const duplicate={...input,historySupplements:[path.join(input.siteHistoryDir,'browser-verified-outreach.js')]};
-  assert.equal(planWorkspace(duplicate).inputs.historySupplementFiles,2);
+  assert.equal(planWorkspace(duplicate).inputs.historySupplementFiles,4);
   const args=[fileURLToPath(new URL('../scripts/plan-workspace-round.mjs',import.meta.url)),
     '--candidates',input.candidateFile,'--research-dir',input.researchDir,
     '--history-dir',input.historyDir,'--site-history-dir',input.siteHistoryDir];
   const packet=JSON.parse(execFileSync(process.execPath,args,{encoding:'utf8'}));
   assert.deepEqual(packet.researchTasks.map(r=>r.company),['Fresh']);
-  assert.equal(packet.inputs.historySupplementFiles,2);assert.equal(packet.sendPerformed,false);
+  assert.equal(packet.inputs.historySupplementFiles,4);assert.equal(packet.sendPerformed,false);
   if(fs.existsSync(fileURLToPath(new URL('../web/browser-verified-outreach.js',import.meta.url)))) {
     const routine=JSON.parse(execFileSync(process.execPath,args.slice(0,-2),{encoding:'utf8'}));
-    assert.equal(routine.inputs.historySupplementFiles,2);
+    assert.equal(routine.inputs.historySupplementFiles,4);
     assert.equal(routine.sendPerformed,false);assert.equal(routine.requiresLiveVerification,true);
   } else {
     // The public code-only package deliberately excludes private customer data.
