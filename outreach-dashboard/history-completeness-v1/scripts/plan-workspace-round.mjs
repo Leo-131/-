@@ -1,0 +1,242 @@
+// Read-only local preflight. Never controls a browser, calls a model or sends mail.
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+import crypto from 'node:crypto';
+import {pathToFileURL,fileURLToPath} from 'node:url';
+import {performance} from 'node:perf_hooks';
+import {planRound} from './plan-outreach-round.mjs';
+
+const historyFiles = {
+  'autonomous-outreach-results.js':'AUTONOMOUS_OUTREACH_RESULTS',
+  'linkedin-connection-results-latest.js':'LINKEDIN_CONNECTION_RESULTS_LATEST',
+  'daily-automation-execution-latest.js':'DAILY_AUTOMATION_EXECUTION_LATEST',
+  'google-lead-discovery-latest.js':'GOOGLE_LEAD_DISCOVERY_LATEST'
+};
+const siteHistoryFiles = {
+  'browser-verified-outreach.js':'AUTONOMOUS_OUTREACH_RESULTS',
+  'september-reconciliation.js':'SEPTEMBER_RECONCILIATION'
+};
+function withSiteHistory(options) {
+  if (!options.siteHistoryDir) return options;
+  const supplements = [...(options.historySupplements || [])];
+  const seen = new Set(supplements.map(filename=>path.resolve(filename)));
+  for (const filename of Object.keys(siteHistoryFiles)) {
+    const absolute = path.resolve(options.siteHistoryDir,filename);
+    if (!seen.has(absolute)) { supplements.push(absolute); seen.add(absolute); }
+  }
+  return {...options,historySupplements:supplements};
+}
+export function extractRows(value) {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== 'object') throw Error('Invalid row container');
+  for (const key of ['records','candidates','rows']) if (Array.isArray(value[key])) return value[key];
+  // Shallow organization results are discovery metadata, never verified evidence.
+  // Preserve explicit aliases/groups while mapping provider spelling once.
+  if (Array.isArray(value.organizations)) return value.organizations.map(row=> {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) throw Error('Invalid organization row');
+    return {...row,company:row.company || row.name,
+      domain:row.domain || row.primary_domain,
+      website:row.website || row.website_url,
+      providerId:row.providerId || row.id};
+  });
+  if (value.company || value.domain || value.companyName) return [value];
+  throw Error('No supported row container');
+}
+// Pure data exports avoid creating a VM. Legacy executable exports retain the
+// original isolated evaluation; a wrong global must still fail closed.
+export function parseHistoryExport(source, global) {
+  const match=source.match(/^\s*window\.([A-Z_]+)\s*=\s*([\s\S]*?)\s*;?\s*$/);
+  if(match && match[1]===global) {
+    try { return {value:JSON.parse(match[2]),mode:'json'}; } catch {}
+  }
+  const context={};context.window=context;
+  vm.runInNewContext(source,context,{timeout:1000});
+  return {value:context[global],mode:'vm'};
+}
+const selectedResearch=directory=>fs.readdirSync(directory).filter(name=>
+  /^(?:research-(?!provider-preflight)|october-research-).*\.json$/.test(name)
+  || /-send-attempt-.*\.json$/.test(name)).sort();
+export function planWorkspace(options) {
+  return planWorkspaceRead(withSiteHistory(options),filename=>fs.readFileSync(filename),selectedResearch(options.researchDir));
+}
+function planWorkspaceRead({candidateFile,candidateFiles,researchDir,historyDir,historySupplements=[],limit=100},readBytes,selected) {
+  const started=performance.now(), hashes=[], files=new Set();
+  function read(filename) {
+    const absolute=path.resolve(filename);
+    if (files.has(absolute)) throw Error('Duplicate input file');
+    files.add(absolute);
+    const bytes=readBytes(absolute);
+    hashes.push([path.basename(absolute),crypto.createHash('sha256').update(bytes).digest('hex')]);
+    return bytes.toString('utf8').replace(/^\uFEFF/,'');
+  }
+  const inputs=candidateFiles ?? [candidateFile];
+  if(!Array.isArray(inputs)||!inputs.length||inputs.some(file=>typeof file!=='string'||!file))
+    throw Error('At least one candidate file is required');
+  const candidates=inputs.flatMap(file=>extractRows(JSON.parse(read(file))));
+  const research=[];
+  // Deliberately exclude generated preflight/provider output: it is not research evidence.
+  if (!selected.length) throw Error('No research cache files: refusing incomplete preflight');
+  for (const name of selected) {
+    const filename=path.join(researchDir,name);
+    const value=JSON.parse(read(filename));
+    // Some historical cache manifests contain only statistics; skip them explicitly.
+    if (!Array.isArray(value) && !['records','candidates','rows'].some(k=>Array.isArray(value?.[k]))
+        && !value?.company && !value?.domain && !value?.companyName) continue;
+    research.push(...extractRows(value));
+  }
+  const inputReadEnd=performance.now();
+  const history=[],historyParseModes={json:0,vm:0};
+  const supplementalRows=new Map();
+  for(const filename of historySupplements) {
+    const basename=path.basename(filename);
+    const global=historyFiles[basename] || siteHistoryFiles[basename];
+    if(!global)throw Error('Supplement must use a known history export filename');
+    const parsed=parseHistoryExport(read(filename),global);
+    const value=parsed.value;
+    const arrays=Array.isArray(value)?[value]:value&&typeof value==='object'?Object.values(value).filter(Array.isArray):[];
+    const rows=arrays.flat().filter(row=>row&&typeof row==='object'&&!Array.isArray(row));
+    // Empty site overlays are valid only with an actual named array export.
+    // Retained daily diagnostic history still requires non-empty real rows.
+    if(!arrays.length || (!rows.length && !siteHistoryFiles[basename]))
+      throw Error('Supplement must retain actual historical rows: '+global);
+    supplementalRows.set(global,[...(supplementalRows.get(global)||[]),...rows]);
+    history.push(...rows);
+  }
+  for (const [filename,global] of Object.entries(historyFiles)) {
+    const parsed=parseHistoryExport(read(path.join(historyDir,filename)),global);
+    historyParseModes[parsed.mode]++;
+    // Preserve the actual named global; never silently accept a missing history source.
+    const rows=parsed.value;
+    if (!rows) throw Error('Missing history global: '+global);
+    if (Array.isArray(rows)) history.push(...rows);
+    else if (typeof rows==='object') {
+      const arrays=Object.values(rows).filter(Array.isArray);
+      // A failed latest execution is not a replacement for permanent history.
+      // Only a proven zero-receipt failure plus explicitly supplied retained
+      // rows may recover this diagnostic shape. Otherwise keep failing closed.
+      if (!arrays.length && !(global==='DAILY_AUTOMATION_EXECUTION_LATEST'
+          && rows.ok===false && rows.extensionReceiptCount===0 && supplementalRows.has(global)))
+        throw Error('No history arrays: '+global);
+      history.push(...arrays.flat().filter(row=>row&&typeof row==='object'&&!Array.isArray(row)));
+    } else throw Error('Invalid history: '+global);
+  }
+  const historyEnd=performance.now();
+  const plan=planRound({candidates,research,history,limit});
+  const planEnd=performance.now();
+  return {...plan,inputs:{candidateRows:candidates.length,candidateFiles:inputs.length,researchRows:research.length,
+    historyRows:history.length,historySupplementFiles:historySupplements.length,filesRead:files.size,researchFiles:selected.length,
+    snapshotDigest:crypto.createHash('sha256').update(JSON.stringify(hashes)).digest('hex')},
+    localPreflightMs:Math.round((planEnd-started)*100)/100,
+    localTimingMs:{candidateAndResearch:Math.round((inputReadEnd-started)*100)/100,
+      history:Math.round((historyEnd-inputReadEnd)*100)/100,
+      planning:Math.round((planEnd-historyEnd)*100)/100},historyParseModes,
+    timingScope:'Local reads and deterministic preflight only; not end-to-end outreach'};
+}
+// Fresh bounded I/O, not a reusable snapshot cache. Only local reads run in
+// parallel; planning and every irreversible outreach action remain serial.
+export async function planWorkspaceAsync(options) {
+  options=withSiteHistory(options);
+  const started=performance.now(),selected=selectedResearch(options.researchDir);
+  const candidates=options.candidateFiles??[options.candidateFile];
+  if(!Array.isArray(candidates)||!candidates.length||candidates.some(x=>typeof x!=='string'||!x))
+    throw Error('At least one candidate file is required');
+  const filenames=[...candidates,...(options.historySupplements||[]),...selected.map(name=>path.join(options.researchDir,name)),
+    ...Object.keys(historyFiles).map(name=>path.join(options.historyDir,name))].map(x=>path.resolve(x));
+  if(new Set(filenames).size!==filenames.length)throw Error('Duplicate input file');
+  const bytes=new Map();let cursor=0;
+  await Promise.all(Array.from({length:Math.min(16,filenames.length)},async()=>{
+    while(cursor<filenames.length){const filename=filenames[cursor++];
+      bytes.set(filename,await fs.promises.readFile(filename));}
+  }));
+  const prefetchEnd=performance.now();
+  const result=planWorkspaceRead(options,filename=>{
+    if(!bytes.has(filename))throw Error('Missing fresh input');return bytes.get(filename);
+  },selected);
+  return {...result,localPreflightMs:Math.round((performance.now()-started)*100)/100,
+    localTimingMs:{prefetch:Math.round((prefetchEnd-started)*100)/100,...result.localTimingMs},
+    inputReadMode:'fresh-bounded-parallel-16-no-persistent-cache'};
+}
+export function compactPlan(plan) {
+  return {...plan,rows:plan.rows.map(row=>Object.fromEntries(
+    ['company','name','domain','website','websiteUrl','group','groupName','parentCompany',
+      'aliases','companyAliases','groupAliases','providerId','evidenceRevision','evidenceSources','cachedResearch',
+      'country','countryMarket','industry','description','keywords','role','contactSearch','contactFallback','contactPoints']
+      .filter(key=>row[key]!==undefined).map(key=>[key,
+        ['description','industry','role'].includes(key)?String(row[key]).slice(0,240):
+        key==='keywords'?(Array.isArray(row[key])?row[key].filter(x=>typeof x==='string').slice(0,8).map(x=>x.slice(0,80)):[]):row[key]])))};
+}
+// Small research-only execution packet. Always regenerate from fresh history;
+// never use an offset/checkpoint to bypass newly recorded company/group locks.
+export function executionPacket(plan, size=20, tasksOnly=false, withSourceBatches=false, lean=false) {
+  if (!Number.isInteger(size) || size<1 || size>100) throw Error('Packet size must be an integer from 1 to 100');
+  // Compact only the current packet. Deferred rows are counted, not inspected or
+  // serialized again; the complete preflight above still sees every input lock.
+  const totalPending=plan.rows.length;
+  const compact=compactPlan({...plan,rows:plan.rows.slice(0,size)});
+  const packet = {...compact,rows:compact.rows,
+    researchTasks:compact.rows.map(row=>globalThis.OutreachEfficiency.verificationTask(row)),
+    researchPolicy:globalThis.OutreachEfficiency.researchPolicy,
+    packet:{totalPending,returned:compact.rows.length,
+      deferred:Math.max(0,totalPending-size),refreshBeforeNextPacket:true,
+      eligibleToSend:false}};
+  if (withSourceBatches) packet.sourceBatches=globalThis.OutreachEfficiency.sourceBatches(compact.rows);
+  if (tasksOnly) {
+    // Avoid sending the same source/contact context twice to the executor.
+    // Preserve exact identities for live CRM/mailbox checks, not send approval.
+    packet.researchTasks = packet.researchTasks.map((task,i)=>({...task,
+      identity:identityForTask(packet.rows[i])}));
+    delete packet.rows;
+    packet.packet.format='research-tasks-only';
+  }
+  if (lean) {
+    if (!tasksOnly) throw Error('Lean packets require tasks-only');
+    // Lift repeated prohibitions to an explicit packet-wide contract. Keep every
+    // identity, alternate source and conflict flag; this is wire compression only.
+    packet.taskContract={appliesTo:'every-research-task',eligibleToSend:false,
+      hintsOnly:true,requiresLiveVerification:true};
+    for (const task of packet.researchTasks) delete task.eligibleToSend;
+    packet.packet.format='research-tasks-lean-v1';
+    delete packet.historyParseModes;
+    delete packet.localTimingMs;
+    delete packet.timingScope;
+    packet.timingScope='local-only-not-end-to-end';
+  }
+  return packet;
+}
+function identityForTask(row) {
+  return Object.fromEntries(['domain','website','websiteUrl','group','groupName','parentCompany',
+    'aliases','companyAliases','groupAliases','providerId'].filter(k=>row[k]!==undefined).map(k=>[k,row[k]]));
+}
+if (process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href) {
+  const args=process.argv.slice(2),options={candidateFiles:[],historySupplements:[]};let compact=false,packetSize,tasksOnly=false,withSourceBatches=false,lean=false,fullPacket=false;
+  for (let i=0;i<args.length;i++) {
+    if(args[i]==='--compact'){compact=true;continue;}
+    if(args[i]==='--full-packet'){fullPacket=true;continue;}
+    if(args[i]==='--tasks-only'){tasksOnly=true;continue;}
+    if(args[i]==='--source-batches'){withSourceBatches=true;continue;}
+    if(args[i]==='--lean'){lean=true;continue;}
+    if(args[i]==='--packet-size'){packetSize=Number(args[++i]);continue;}
+    const key={'--candidates':'candidateFile','--history-supplement':'historySupplement','--site-history-dir':'siteHistoryDir','--research-dir':'researchDir','--history-dir':'historyDir','--limit':'limit'}[args[i]];
+    if(!key || !args[i+1] || args[i+1].startsWith('--'))throw Error('Use --candidates file --research-dir directory --history-dir directory [--limit 100] [--compact]');
+    if(key==='candidateFile')options.candidateFiles.push(args[++i]);
+    else if(key==='historySupplement')options.historySupplements.push(args[++i]);
+    else options[key]=key==='limit'?Number(args[++i]):args[++i];
+  }
+  if (!options.candidateFiles.length||!options.researchDir||!options.historyDir)throw Error('All three input sources are required');
+  if (fullPacket && (compact || tasksOnly || withSourceBatches || lean)) throw Error('--full-packet cannot be combined with compact/task flags');
+  // Routine invocations must not serialize each row twice or omit the source
+  // schedule. Full audit and legacy packet formats remain explicit opt-ins.
+  if (!compact && !fullPacket) { tasksOnly=true;withSourceBatches=true;lean=true; }
+  if (tasksOnly && compact) throw Error('--tasks-only cannot be combined with --compact');
+  if (withSourceBatches && compact) throw Error('--source-batches cannot be combined with --compact');
+  if (lean && !tasksOnly) throw Error('--lean requires --tasks-only');
+  // Routine production CLI must retain the private Site's verified social and
+  // mailbox overlays, even when the desktop snapshot omits those old receipts.
+  // This is a local source path, never a fetch or a send-authorizing snapshot.
+  options.siteHistoryDir ||= fileURLToPath(new URL('../web/',import.meta.url));
+  const plan=await planWorkspaceAsync(options);
+  // Normal executions emit only the next research packet. --compact explicitly
+  // retains the full pending queue for audit/export, not routine execution.
+  console.log(JSON.stringify(packetSize!==undefined?executionPacket(plan,packetSize,tasksOnly,withSourceBatches,lean):compact?compactPlan(plan):executionPacket(plan,20,tasksOnly,withSourceBatches,lean)));
+}
