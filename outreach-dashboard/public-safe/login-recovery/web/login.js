@@ -1,15 +1,24 @@
 (function(){
  'use strict';
- let pending=false;
+ let pending=false,startupStarted=false,startupActive=true;
  const deadlineMs=10000;
  const unknownResult='登录结果尚未确认，未自动重复提交密码。请检查网络后手动重试。';
  function destination(){
-  const path=new URLSearchParams(location.search).get('returnTo');
-  if(typeof path!=='string'||!path.startsWith('/')||/[\\\u0000-\u001f\u007f]/.test(path))return '/?view=agent';
+  const fallback='/?view=agent',path=new URLSearchParams(location.search).get('returnTo');
+  if(typeof path!=='string'||!path.startsWith('/'))return fallback;
   try{
-   const target=new URL(path,location.href);
-   return target.origin===location.origin?target.pathname+target.search+target.hash:'/?view=agent';
-  }catch{return '/?view=agent';}
+   const target=new URL(path,location.href);let decoded=path;
+   for(let depth=0;depth<8;depth++){
+    if(!decoded.startsWith('/')||decoded.startsWith('//')||/[\\\u0000-\u001f\u007f]/.test(decoded))return fallback;
+    const normalized=new URL(decoded,location.href);
+    if(normalized.origin!==location.origin||normalized.pathname.startsWith('//')
+      ||/^\/login(?:\.html)?\/*$/i.test(normalized.pathname))return fallback;
+    const next=decodeURIComponent(decoded);
+    if(next===decoded)return target.pathname+target.search+target.hash;
+    decoded=next;
+   }
+  }catch{}
+  return fallback;
  }
  async function accessRequest(method,body){
   const controller=new AbortController();let timer;
@@ -27,7 +36,7 @@
   }finally{clearTimeout(timer);}
  }
  document.querySelector('#access-form').addEventListener('submit',async e=>{
-  e.preventDefault();if(pending)return;
+  e.preventDefault();startupActive=false;if(pending)return;
   pending=true;
   const button=e.target.querySelector('button'),error=document.querySelector('#access-error');
   button.disabled=true;error.textContent='';
@@ -49,4 +58,17 @@
    }catch{error.textContent=unknownResult;}
   }finally{pending=false;button.disabled=false;}
  });
+ async function inspectExistingSession(){
+  if(startupStarted||!startupActive)return;
+  startupStarted=true;
+  try{
+   // Static/clean-URL login assets can bypass the worker redirect. Observe once;
+   // never read credentials or change form/error state during this startup check.
+   const {response,data}=await accessRequest('GET');
+   if(startupActive&&!pending&&response.ok&&data?.ok===true&&data.authenticated===true)
+    location.assign(destination());
+  }catch{}
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',inspectExistingSession,{once:true});
+ else void inspectExistingSession();
 }());

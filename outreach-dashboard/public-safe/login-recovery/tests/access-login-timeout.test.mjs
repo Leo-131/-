@@ -9,11 +9,13 @@ const origin='https://flextail-customer-workspace.leo13111.chatgpt.site';
 const response=(data,status=200)=>({ok:status>=200&&status<300,status,json:async()=>data});
 const gate=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 async function settle(){for(let n=0;n<16;n++)await Promise.resolve();}
-function fixture(fetcher,{search='',password='fixture-secret-not-for-output'}={}){
- let handler,now=0,sequence=0;
+function fixture(fetcher,{search='',password='fixture-secret-not-for-output',readyState='loading'}={}){
+ let handler,readyHandler,now=0,sequence=0,passwordReads=0;
  const timers=new Map(),calls=[],navigations=[],button={disabled:false},error={textContent:''};
- const input={value:password},form={addEventListener:(name,fn)=>{assert.equal(name,'submit');handler=fn;}};
- const document={querySelector:selector=>{
+ const input={get value(){passwordReads++;return password;}},form={addEventListener:(name,fn)=>{assert.equal(name,'submit');handler=fn;}};
+ const document={readyState,addEventListener:(name,fn,options)=>{
+  assert.equal(name,'DOMContentLoaded');assert.equal(options.once,true);readyHandler=fn;
+ },querySelector:selector=>{
   if(selector==='#access-form')return form;
   if(selector==='#access-password')return input;
   if(selector==='#access-error')return error;
@@ -29,6 +31,7 @@ function fixture(fetcher,{search='',password='fixture-secret-not-for-output'}={}
   clearTimeout:id=>timers.delete(id)};
  vm.runInNewContext(source,context,{filename:'web/login.js'});
  const submit=()=>handler({preventDefault(){},target:{querySelector:selector=>{assert.equal(selector,'button');return button;}}});
+ const ready=async()=>{document.readyState='complete';readyHandler?.();await settle();};
  const tick=async ms=>{
   const until=now+ms;
   for(;;){
@@ -39,7 +42,7 @@ function fixture(fetcher,{search='',password='fixture-secret-not-for-output'}={}
   }
   now=until;await settle();
  };
- return {submit,tick,calls,navigations,button,error,input,timers};
+ return {submit,ready,tick,calls,navigations,button,error,input,timers,get passwordReads(){return passwordReads;}};
 }
 const methods=f=>f.calls.map(call=>call.options.method||'GET');
 
@@ -218,5 +221,94 @@ test('failure UI never echoes a password or raw transport/server diagnostic',asy
   },{password});
   await f.submit();assert.doesNotMatch(f.error.textContent,new RegExp(password));
   assert.equal(f.input.value,password);assert.equal(f.timers.size,0);
+ }
+});
+
+test('DOM-ready startup checks an existing session once with no credential read or password POST',async()=>{
+ const f=fixture(async()=>response({ok:true,authenticated:true}),{search:'?returnTo=%2F%3Fview%3Dcustomers%26search%3DTest%23details'});
+ assert.deepEqual(methods(f),[]);
+ await f.ready();await f.ready();
+ assert.deepEqual(methods(f),['GET']);assert.equal(f.passwordReads,0);
+ assert.deepEqual(f.navigations,['/?view=customers&search=Test#details']);
+ assert.equal(f.button.disabled,false);assert.equal(f.error.textContent,'');assert.equal(f.timers.size,0);
+ const call=f.calls[0];assert.equal(call.url,'/api/access');assert.equal(call.options.body,undefined);
+ assert.equal(call.options.credentials,'same-origin');assert.equal(call.options.cache,'no-store');
+});
+
+test('an already-ready document starts exactly one read-only session check',async()=>{
+ const f=fixture(async()=>response({ok:true,authenticated:true}),{readyState:'complete'});
+ await settle();await f.ready();
+ assert.deepEqual(methods(f),['GET']);assert.equal(f.passwordReads,0);
+ assert.deepEqual(f.navigations,['/?view=agent']);
+});
+
+test('unauthenticated, failed or malformed startup responses leave the form unchanged',async()=>{
+ for(const value of [response({ok:true,authenticated:false}),response({ok:false,authenticated:true}),
+  response({ok:true,authenticated:true},401),response({ok:true,authenticated:'true'}),
+  response({ok:true}),{ok:true,status:200,json:async()=>{throw Error('bad JSON');}}]){
+  const f=fixture(async()=>value);f.error.textContent='existing form message';
+  await f.ready();assert.deepEqual(methods(f),['GET']);assert.deepEqual(f.navigations,[]);
+  assert.equal(f.error.textContent,'existing form message');assert.equal(f.button.disabled,false);
+  assert.equal(f.passwordReads,0);assert.equal(f.timers.size,0);
+ }
+});
+
+test('startup fetch or JSON hangs remain bounded even if abort is ignored',async()=>{
+ for(const bodyHang of [false,true]){
+  const f=fixture(()=>bodyHang?Promise.resolve({ok:true,status:200,json:()=>new Promise(()=>{})}):new Promise(()=>{}));
+  await f.ready();assert.equal(f.button.disabled,false);assert.equal(f.error.textContent,'');
+  await f.tick(10000);
+  assert.deepEqual(methods(f),['GET']);assert.equal(f.calls[0].options.signal.aborted,true);
+  assert.deepEqual(f.navigations,[]);assert.equal(f.button.disabled,false);assert.equal(f.error.textContent,'');
+  assert.equal(f.passwordReads,0);assert.equal(f.timers.size,0);
+ }
+});
+
+test('late startup success after its deadline cannot navigate or alter form state',async()=>{
+ const read=gate(),f=fixture(()=>read.promise);
+ await f.ready();await f.tick(10000);f.error.textContent='current form message';
+ read.resolve(response({ok:true,authenticated:true}));await settle();
+ assert.deepEqual(f.navigations,[]);assert.deepEqual(methods(f),['GET']);
+ assert.equal(f.error.textContent,'current form message');assert.equal(f.button.disabled,false);
+});
+
+test('explicit submit invalidates startup navigation before or after the password result',async()=>{
+ for(const finishPostFirst of [false,true]){
+  const read=gate(),post=gate();
+  const f=fixture((_url,options)=>options.method==='GET'?read.promise:post.promise);
+  await f.ready();const submitted=f.submit();await settle();
+  assert.deepEqual(methods(f),['GET','POST']);assert.equal(f.button.disabled,true);
+  if(finishPostFirst){post.resolve(response({ok:false},401));await submitted;}
+  const beforeError=f.error.textContent,beforeDisabled=f.button.disabled;
+  read.resolve(response({ok:true,authenticated:true}));await settle();
+  assert.deepEqual(f.navigations,[]);assert.equal(f.error.textContent,beforeError);
+  assert.equal(f.button.disabled,beforeDisabled);
+  if(!finishPostFirst){post.resolve(response({ok:false},401));await submitted;}
+  assert.match(f.error.textContent,/访问密码不正确/);assert.equal(f.button.disabled,false);
+ }
+});
+
+test('a submit before DOM ready prevents the startup probe from being launched',async()=>{
+ const f=fixture(async()=>response({ok:false},401));
+ await f.submit();await f.ready();
+ assert.deepEqual(methods(f),['POST']);assert.deepEqual(f.navigations,[]);
+ assert.match(f.error.textContent,/访问密码不正确/);assert.equal(f.button.disabled,false);
+});
+
+test('failed startup GET never blocks a later explicit password submission',async()=>{
+ const f=fixture(async(_url,options)=>{if(options.method==='GET')throw Error('network fixture');return response({ok:true});});
+ await f.ready();assert.equal(f.error.textContent,'');assert.equal(f.button.disabled,false);
+ await f.submit();assert.deepEqual(methods(f),['GET','POST']);
+ assert.deepEqual(f.navigations,['/?view=agent']);
+});
+
+test('startup returnTo rejects self-loops and encoded navigation hazards',async()=>{
+ for(const path of ['https://outside.invalid/path','//outside.invalid/path','/\\outside.invalid/path',
+  '/\npath','/%0apath','/%255cpath','/%2foutside.invalid/path','/safe/..//outside.invalid/path',
+  '/login','/login.html?returnTo=/','/LOGIN/','/safe/%2e%2e/login.html',
+  '/%6cogin','/%256cogin%252ehtml','/login%3freturnTo=%2f','/login%23form']){
+  const f=fixture(async()=>response({ok:true,authenticated:true}),{search:'?returnTo='+encodeURIComponent(path)});
+  await f.ready();assert.deepEqual(f.navigations,['/?view=agent'],path);
+  assert.deepEqual(methods(f),['GET']);assert.equal(f.passwordReads,0);
  }
 });

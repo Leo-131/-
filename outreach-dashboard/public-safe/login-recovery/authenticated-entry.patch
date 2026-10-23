@@ -1,0 +1,147 @@
+diff --git a/server/worker.mjs b/server/worker.mjs
+index f2f535f..5349385 100644
+--- a/server/worker.mjs
++++ b/server/worker.mjs
+@@ -13,6 +13,25 @@ const headers={
+   'Content-Security-Policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-src https://global-ai-company-hq.leo13111.chatgpt.site; object-src 'none'; base-uri 'self'; form-action 'self'"
+ };
+ const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{...headers,'Content-Type':'application/json; charset=utf-8'}});
++function loginDestination(url){
++  const fallback='/?view=workspace',value=url.searchParams.get('returnTo');
++  if(typeof value!=='string'||!value.startsWith('/'))return fallback;
++  try{
++    const target=new URL(value,url.origin);let decoded=value;
++    // Validate every decoded form, but preserve the original local URL on success.
++    // Encoded slashes/dot segments must not become an external redirect or login loop.
++    for(let depth=0;depth<8;depth++){
++      if(!decoded.startsWith('/')||decoded.startsWith('//')||/[\\\u0000-\u001f\u007f]/.test(decoded))return fallback;
++      const normalized=new URL(decoded,url.origin);
++      if(normalized.origin!==url.origin||normalized.pathname.startsWith('//')
++        ||/^\/login(?:\.html)?\/*$/i.test(normalized.pathname))return fallback;
++      const next=decodeURIComponent(decoded);
++      if(next===decoded)return target.pathname+target.search+target.hash;
++      decoded=next;
++    }
++  }catch{}
++  return fallback;
++}
+ export function validValues(values){
+   return values && typeof values==='object' && !Array.isArray(values)
+     && Object.entries(values).length<=10000
+@@ -38,9 +57,12 @@ export default {
+     const url=new URL(request.url);
+     if(url.pathname==='/mcp')return taskMcp(request,env,json);
+     if(url.pathname==='/api/access')return accessRoute(request,env,json);
++    const loginEntry=url.pathname==='/login'||url.pathname==='/login.html';
++    if(loginEntry&&['GET','HEAD'].includes(request.method)&&await accessGranted(request,env))
++      return new Response(null,{status:302,headers:{...headers,Location:loginDestination(url)}});
+     const syncHeader=request.headers.get('authorization')||'';
+     const syncAccess=Boolean(env.OUTREACH_SYNC_TOKEN_SHA256 && syncHeader.startsWith('Bearer ') && await digest(syncHeader.slice(7))===env.OUTREACH_SYNC_TOKEN_SHA256);
+-    if(!syncAccess && !['/login.html','/login.js','/workspace-1875.css','/favicon.ico'].includes(url.pathname) && !await accessGranted(request,env)) {
++    if(!syncAccess && !['/login','/login.html','/login.js','/workspace-1875.css','/favicon.ico'].includes(url.pathname) && !await accessGranted(request,env)) {
+       if(url.pathname.startsWith('/api/'))return json({ok:false,error:'请先输入工作台访问密码',accessRequired:true},401);
+       return new Response(null,{status:302,headers:{...headers,Location:'/login.html?returnTo='+encodeURIComponent(url.pathname+url.search)}});
+     }
+diff --git a/tests/access-login-redirect.test.mjs b/tests/access-login-redirect.test.mjs
+new file mode 100644
+index 0000000..867d9c5
+--- /dev/null
++++ b/tests/access-login-redirect.test.mjs
+@@ -0,0 +1,97 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import worker from '../server/worker.mjs';
++import {cookieFixture} from './access-fixture.mjs';
++
++const origin='https://workspace.test',user='login-redirect-fixture';
++async function fixture(){
++  const assets=[];
++  const env={ASSETS:{fetch:async request=>{assets.push(new URL(request.url).pathname);return new Response('LOGIN_FORM_FIXTURE');}}};
++  const cookie=await cookieFixture(origin,user,env);
++  const request=(entry,returnTo,{method='GET',authenticated=true,identity=user,cookieValue=cookie}={})=>{
++    const url=new URL(entry,origin);
++    if(returnTo!==undefined)url.searchParams.set('returnTo',returnTo);
++    return worker.fetch(new Request(url,{method,headers:{'oai-authenticated-user-id':identity,
++      ...(authenticated?{Cookie:cookieValue}:{})}}),env);
++  };
++  return {assets,env,cookie,request};
++}
++
++test('valid sessions leave both clean and html login entries without another password submission',async()=>{
++  const f=await fixture(),destination='/?view=customers&search=Test%20Company#details';
++  for(const entry of ['/login','/login.html'])for(const method of ['GET','HEAD']){
++    const r=await f.request(entry,destination,{method});
++    assert.equal(r.status,302,entry+' '+method);
++    assert.equal(r.headers.get('location'),destination);
++    assert.equal(r.headers.get('set-cookie'),null,'existing cookie must not be replaced or extended');
++    assert.equal(r.headers.get('cache-control'),'private, no-store');
++    assert.equal(await r.text(),'');
++  }
++  assert.deepEqual(f.assets,[],'authenticated login never renders the password form');
++});
++
++test('missing returnTo defaults to the workspace for both login entries',async()=>{
++  const f=await fixture();
++  for(const entry of ['/login','/login.html']){
++    const r=await f.request(entry);
++    assert.equal(r.status,302);assert.equal(r.headers.get('location'),'/?view=workspace');
++  }
++});
++
++test('external, protocol-relative, backslash, control and login-loop return paths fail closed',async()=>{
++  const f=await fixture();
++  const unsafe=['','https://outside.invalid/path','//outside.invalid/path','javascript:alert(1)',
++    '/\\outside.invalid/path','/\n/elsewhere','/\u0000path','/\u007fpath',
++    '/%2foutside.invalid/path','/%5coutside.invalid/path','/%0apath','/%250apath',
++    '/safe/..//outside.invalid/path','/login','/login.html','/login?returnTo=/',
++    '/login.html#form','/LOGIN/','/safe/../login.html','/safe/%2e%2e/login',
++    '/%6cogin','/%256cogin%252ehtml','/lo%67in%2ehtml','/login%3freturnTo=%2f',
++    '/login%23form','/%zz', '/'+ '%25'.repeat(10)+'6cogin'];
++  for(const entry of ['/login','/login.html'])for(const returnTo of unsafe){
++    const r=await f.request(entry,returnTo);
++    assert.equal(r.status,302,entry+' '+JSON.stringify(returnTo));
++    assert.equal(r.headers.get('location'),'/?view=workspace',entry+' '+JSON.stringify(returnTo));
++  }
++});
++
++test('safe local destinations preserve query and fragment without exposing an external Location',async()=>{
++  const f=await fixture();
++  for(const destination of ['/','/?view=reports&period=2026-10-24','/materials#catalog','/safe/../?view=customers']){
++    const r=await f.request('/login',destination),target=new URL(destination,origin);
++    assert.equal(r.headers.get('location'),target.pathname+target.search+target.hash);
++  }
++});
++
++test('unauthenticated clean and html login requests still render the normal form',async()=>{
++  const f=await fixture();
++  for(const entry of ['/login','/login.html'])for(const method of ['GET','HEAD']){
++    const r=await f.request(entry,'/?view=customers',{method,authenticated:false});
++    assert.equal(r.status,200);assert.equal(r.headers.get('location'),null);
++    assert.equal(r.headers.get('set-cookie'),null);assert.equal(await r.text(),'LOGIN_FORM_FIXTURE');
++  }
++  assert.equal(f.assets.length,4);
++});
++
++test('invalid, expired and different-account cookies cannot skip either password form',async()=>{
++  const f=await fixture(),originalNow=Date.now;
++  for(const entry of ['/login','/login.html']){
++    for(const options of [{cookieValue:f.cookie+'invalid'},{identity:'different-fixture-user'}]){
++      const r=await f.request(entry,'/?view=customers',options);
++      assert.equal(r.status,200);assert.equal(r.headers.get('location'),null);
++    }
++    let expired;
++    try{Date.now=()=>originalNow()+28800001;expired=await f.request(entry,'/?view=customers');}
++    finally{Date.now=originalNow;}
++    assert.equal(expired.status,200);assert.equal(expired.headers.get('location'),null);
++  }
++});
++
++test('login redirect cannot authenticate protected APIs or mutate the existing auth contract',async()=>{
++  const f=await fixture();
++  const denied=await worker.fetch(new Request(origin+'/api/health',{headers:{'oai-authenticated-user-id':user}}),f.env);
++  assert.equal(denied.status,401);assert.equal((await denied.json()).accessRequired,true);
++  const session=await worker.fetch(new Request(origin+'/api/access',{headers:{Cookie:f.cookie,'oai-authenticated-user-id':user}}),f.env);
++  assert.equal((await session.json()).authenticated,true);
++  const health=await worker.fetch(new Request(origin+'/api/health',{headers:{Cookie:f.cookie,'oai-authenticated-user-id':user}}),f.env);
++  assert.equal(health.status,200);assert.equal((await health.json()).executionConnected,false);
++});
