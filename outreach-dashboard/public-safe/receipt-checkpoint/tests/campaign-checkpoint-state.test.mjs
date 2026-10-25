@@ -134,6 +134,28 @@ test('unknown/prepared/draft,nonexclusive ICP threshold and unknown country neve
  }
 });
 
+test('known delivery or development exclusions fail closed without redundant flags',()=>{
+ for(const mutation of [{deliveryStatus:'hard_bounced'},
+  {newCustomerDevelopmentStatus:'excluded_hard_bounce'},
+  {newCustomerDevelopmentStatus:'excluded_prior_group_contact'}]){
+  const input=fixture();Object.assign(input.receipt,mutation);
+  input.daily.records[input.daily.records.length-1]=clone(input.receipt);
+  const before=clone(input);
+  assert.throws(()=>buildCampaignCheckpoint(input),JSON.stringify(mutation));
+  assert.deepEqual(input,before,'preserve Sent and source evidence');
+  const existing=fixture({includeNew:false});existing.receipt=null;
+  Object.assign(existing.campaign.records.at(-1),mutation);
+  Object.assign(existing.daily.records.at(-1),mutation);
+  assert.throws(()=>buildCampaignCheckpoint(existing),'existing active failed receipt requires explicit correction');
+ }
+});
+
+test('Sent with unconfirmed delivery remains countable without claiming delivery',()=>{
+ const input=fixture();input.receipt.deliveryStatus='not independently confirmed; sent-folder confirmation only';
+ input.daily.records[input.daily.records.length-1]=clone(input.receipt);
+ assertCounts(buildCampaignCheckpoint(input),71,31);
+});
+
 test('invalid real dates,date/time disagreement and pre-campaign receipts throw',()=>{
  for(const mutation of [{sentAtLocal:'not a timestamp'},
   {sentAtLocal:'2026-10-32T12:31:00+08:00',executionDate:'2026-10-32',batchDate:'2026-10-32'},

@@ -2,6 +2,12 @@ import '../web/outreach-efficiency.js';
 export const isKnownCountry=value=>typeof value==='string'&&!!value.trim()
   && !/unknown|unverified|unspecified|global|待核|未知/i.test(value);
 
+// Sent is a historical event, not proof of valid new-customer delivery. Only
+// explicit machine states exclude counting; never infer failure from free text.
+export const isExcludedNewCustomerReceipt=row=>row?.countAsNewCustomer===false
+  || row?.deliveryStatus==='hard_bounced'
+  || ['excluded_hard_bounce','excluded_prior_group_contact'].includes(row?.newCustomerDevelopmentStatus);
+
 export function actualExecutionDay(row) {
   const timestamp=row.sentAtLocal || row.timestamp;
   const value=Date.parse(timestamp);
@@ -33,7 +39,8 @@ export function buildDailyLedger({date,fixedRecords=[],existing=null,receipt=nul
     }
     const id=row.mailId || row.messageId;
     if(row.status!=='sent_confirmed' || !/^1_0:/.test(id || '') || !row.company
-        || !(row.icp>70) || !isKnownCountry(row.country))throw Error('Unverified receipt');
+        || !(row.icp>70) || !isKnownCountry(row.country)
+        || isExcludedNewCustomerReceipt(row))throw Error('Unverified receipt');
     const previous=byId.get(id);
     const keys=globalThis.OutreachEfficiency.identityKeys({...row,website:row.source})
       .filter(key=>!key.startsWith('id:'));

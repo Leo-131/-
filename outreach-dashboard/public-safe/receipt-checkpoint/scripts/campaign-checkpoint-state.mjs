@@ -1,7 +1,7 @@
 // Pure post-Sent reconciliation. Never sends, retries, writes or asserts delivery.
 import {isDeepStrictEqual} from 'node:util';
 import {createHash} from 'node:crypto';
-import {actualExecutionDay,isKnownCountry} from './receipt-state.mjs';
+import {actualExecutionDay,isKnownCountry,isExcludedNewCustomerReceipt} from './receipt-state.mjs';
 
 const receiptId=row=>row?.mailId||row?.messageId;
 const keys=row=>globalThis.OutreachEfficiency.identityKeys({...row,website:row.source})
@@ -17,7 +17,7 @@ export function campaignReceiptDigest({campaign,daily}){
 function validReceipt(row){
  const id=receiptId(row),time=Date.parse(row?.sentAtLocal||row?.timestamp);
  if(!row||row.status!=='sent_confirmed'||!/^1_0:/.test(id||'')||!row.company
-  ||!(row.icp>70)||!isKnownCountry(row.country)||!Number.isFinite(time)||row.countAsNewCustomer===false)
+  ||!(row.icp>70)||!isKnownCountry(row.country)||!Number.isFinite(time)||isExcludedNewCustomerReceipt(row))
   throw Error('Verified campaign receipt required');
  actualExecutionDay(row);return {id,time};
 }
