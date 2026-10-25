@@ -2,10 +2,10 @@
   "dataDate": "2026-10-25",
   "timezone": "Asia/Shanghai",
   "campaignTarget": 500,
-  "confirmedUniqueNewSendsInCampaign": 73,
-  "remainingInCampaign": 427,
-  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 0,
-  "previousDateConfirmedNewSends": 23,
+  "confirmedUniqueNewSendsInCampaign": 74,
+  "remainingInCampaign": 426,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 1,
+  "previousDateConfirmedNewSends": 33,
   "countingRule": "Unique new company/group actual Sent recipient,body,time and non-draft permanent message ID; drafts,unknowns,historical contacts,known hard bounces and final returned delivery failures excluded. Actual Sent history retained.",
   "deliveryStatus": "Sent history retained separately from explicit permanent failures; absence of a bounce does not establish delivery or human reply.",
   "hardBounceReceiptsExcluded": 7,
@@ -22,12 +22,12 @@
   "unknownSendAttemptsInCurrentCampaign": 0,
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Local permanent ledger and owner-private customer system only; no identities/emails/contact logs or credentials in public repository",
-  "dataSourceCommit": "aa8b3a51f0de4bfed6a25ba2bb45e41c0b0ce7bc",
-  "repairSourceCommit": "aa8b3a51f0de4bfed6a25ba2bb45e41c0b0ce7bc",
-  "currentFocusedTestsPassed": 148,
-  "currentFocusedScope": "Ten explicit loader/login/recovery/receipt/checkpoint/patch-generator/role-parser files:148 passed/0 failed,13830.8557ms; not a full suite. Final build followed by2313-record diagnostic:missing0.",
+  "dataSourceCommit": "dc4721d44bfb79a7d191952e78ffa2d6ae335d8f",
+  "repairSourceCommit": "dc4721d44bfb79a7d191952e78ffa2d6ae335d8f",
+  "currentFocusedTestsPassed": 136,
+  "currentFocusedScope": "Nine explicit login/recovery/receipt/checkpoint/patch-generator/real-role-projection files:136 passed/0 failed,230066.1801ms; not a full suite. Role projection alone201572.7046ms. Preserve passed checks when resuming packaging.",
   "freshFullTestSuiteRun": false,
-  "siteVersion": 227,
+  "siteVersion": 230,
   "siteDeploymentStatus": "succeeded",
   "dedupRepair": "Terminal separated Singapore Pte Ltd punctuation equivalence only; exact company/group permanent locks preserved; no fuzzy legal-entity merge.",
   "dedupCodeSha256": "101ce1854eaa1fba226fe951823765c8a50a725905bbab1f5eeace6adaf6ab1d",
@@ -49,13 +49,13 @@
   },
   "previousRepairFocusedTestsPassed": 159,
   "receiptConsistencyAudit": {
-    "campaignRows": 73,
-    "dailyRows": 0,
+    "campaignRows": 74,
+    "dailyRows": 1,
     "allCampaignReceiptsExactlyOnceInBothStores": true,
-    "projectedDiagnosticRecords": 2313,
+    "projectedDiagnosticRecords": 2314,
     "missingReceiptCustomerMatches": 0,
-    "permanentRows": 2920,
-    "privateSiteRows": 2763,
+    "permanentRows": 2921,
+    "privateSiteRows": 2764,
     "failedSentHistoryRowsRetained": true
   },
   "concurrentBrowserRecoverySource": "299662438a6375e2513d5536c395e95bf3c0728e",
@@ -86,10 +86,10 @@
     "productionBothEntriesReturnedToCustomerTable": true,
     "passwordSubmissionsDuringEntryAcceptance": 0
   },
-  "newVerifiedSendsSincePreviousSync": 0,
-  "concurrentRoleSourcePreserved": "465fcf54238005a1d3d2db9a5de56166e9c74983",
-  "synchronizationQualification": "Final correction and same explicit-failure guard deployed owner-private at227, preserving independent role work. Public GitHub contains only anonymous summaries and safe code, no customer identities or credentials; normal push only.",
-  "verifiedAt": "2026-10-25T04:14:28.825Z",
+  "newVerifiedSendsSincePreviousSync": 1,
+  "concurrentRoleSourcePreserved": "f03f015d95b74adf8b0c67520323c106000c450e",
+  "synchronizationQualification": "Merged latest owner changes through f03f015 without overwriting or force push; identical built and pushed source deployed owner-private at230. This public file contains anonymous aggregates only; receipt identities and customer data remain private.",
+  "verifiedAt": "2026-10-25T05:10:08.093842+00:00",
   "checkpointRecovery": {
     "sameReceiptProposalUpdatesCampaignAndContinuation": true,
     "legacyAttemptsPreserved": true,
@@ -97,7 +97,7 @@
     "excludedReceiptRevivalRejected": true,
     "concurrentExclusionInvalidatesOldProposal": true,
     "sameCountsOlderReceiptCorrectionInvalidatesCoverage": true,
-    "receiptContentDigest": "09ed754540bdbb9d218c50d1ff7a10b113e58ce72a001c25614d905cc1b1085d",
+    "receiptContentDigest": "9cca57691b119b512b82d2541cdd1a0b9e9322aece18caf8470c9b9a14838a63",
     "bounded500RowProposalTested": true,
     "privateSiteLedgerRemainsSeparateImmediateStep": true,
     "safeSourcePath": "outreach-dashboard/public-safe/receipt-checkpoint/"
@@ -125,17 +125,17 @@
     "normalizedSourceSha256": "76574997ca18f314fc040ddfee280a98c3251cfdf3fc36305912349e5da04d26"
   },
   "currentRepairRevalidation": {
-    "newProductionCodeChange": true,
+    "newProductionCodeChange": false,
     "currentBrowserReadConnected": true,
     "workspaceAuthenticated": true,
     "mailboxAuthenticated": true,
-    "authenticationQualification": "One saved-password focus and one normal same-origin workbench submit25 returned actual loaded1/2313customer table. Mailbox refresh returned27unread. No credential value read or email sent; active sender still needs a fresh check before any later send.",
+    "authenticationQualification": "Actual authenticated workbench and permanent Sent view observed without a new login submission. A new eligible company's actual Sent receipt was independently verified and persisted; inbox delivery and human reply remain unverified.",
     "unattendedHostVerified": false,
-    "passwordSubmissions": 1,
+    "passwordSubmissions": 0,
     "priorBootRepairPreserved": true,
     "scriptRemovalIsNotCancellation": true,
     "normalSessionExpiryAndChallengesRemain": true,
-    "currentSenderReverifiedForNewSend": false,
+    "currentSenderReverifiedForNewSend": true,
     "normalSavedPasswordRenewalVerified": true
   },
   "currentFocusedTestDate": "2026-10-25",
@@ -160,7 +160,7 @@
     "hardBounceAndFinalReturnStatesBothCovered": true,
     "rfcEnhancedStatusNotInvented": true
   },
-  "emailDispatchStatus": "temporarily_paused_pending_provider_account_diagnosis",
+  "emailDispatchStatus": "degraded_pending_provider_diagnosis_no_global_resume",
   "providerAccountFailureAttribution": "Google5.2.1 account attribution unresolved. Separate provider final connection failure recorded without inventing SMTP or RFC DSN fields. Neither proves a global sender ban.",
   "scheduledSync": {
     "dataDate": "2026-10-24",
@@ -186,5 +186,19 @@
     "priorDailyCount": 34,
     "correctedDailyCount": 33,
     "reason": "One independently correlated final connection-failure return found by fresh mailbox observation; not another Google5.2.1 or a new send."
+  },
+  "localValidationOptimization": {
+    "slowProjectionMs": 201572.7046,
+    "fullSuiteRun": false,
+    "successfulChecksRerunDuringPackagingResume": false,
+    "buildInterruptedAfterTestsThenResumed": true,
+    "sourceOrSendGatesWeakened": false
+  },
+  "newReceiptSinceCorrected73Snapshot": {
+    "confirmedNewCompanies": 1,
+    "actualExecutionDate": "2026-10-25",
+    "totalAfterReceipt": 74,
+    "remaining": 426,
+    "noDeliveryOrReplyClaim": true
   }
 }
