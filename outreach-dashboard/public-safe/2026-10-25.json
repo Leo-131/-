@@ -4,18 +4,18 @@
   "timezone": "Asia/Shanghai",
   "goalStatus": "active",
   "campaignTarget": 500,
-  "confirmedUniqueNewSendsInCampaign": 77,
-  "remainingInCampaign": 423,
+  "confirmedUniqueNewSendsInCampaign": 78,
+  "remainingInCampaign": 422,
   "dailyTarget": 100,
-  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 4,
-  "dailyRemaining": 96,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 5,
+  "dailyRemaining": 95,
   "countedChannelsInCurrentCampaign": {
     "email": 74,
-    "linkedin": 3
+    "linkedin": 4
   },
   "countedChannelsOnDataDate": {
     "email": 1,
-    "linkedin": 3
+    "linkedin": 4
   },
   "countingRule": "Unique new company/group with real email receipt or independently reopened official LinkedIn outgoing message, exact sender/recipient/body/time and immutable screenshot. Invites,follows,forms,drafts,unknowns,historical contacts and known permanent failures excluded.",
   "deliveryStatus": "Persisted outgoing is not proof of inbox delivery or human reply.",
@@ -35,19 +35,19 @@
   "copyPolicy": "Evidence-specific company/category matching, one primary question, optional15minutevideo, approved three material links and one opt-out.",
   "dailyTerritoryVerification": "Actual bounded live agency-table read on2026-10-25; no date-only refresh.",
   "receiptConsistencyAudit": {
-    "campaignRows": 77,
-    "dailyRows": 4,
+    "campaignRows": 78,
+    "dailyRows": 5,
     "allCampaignReceiptsExactlyOnceInBothStores": true,
-    "permanentRows": 2924,
-    "privateSiteRows": 2767,
+    "permanentRows": 2925,
+    "privateSiteRows": 2768,
     "missingReceipts": 0,
     "duplicateReceipts": 0,
     "retainedExclusions": 9
   },
   "privateSystemPublication": {
-    "status": "succeeded",
+    "status": "pending_latest_checkpoint_verification",
     "dataDate": "2026-10-25",
-    "exactSourceCommit": "415bccbfbce8f33b2496acf0c61cb218a6a4fbbb",
+    "exactSourceCommit": null,
     "audienceUnchanged": "owner-private"
   },
   "validation": {
@@ -55,18 +55,19 @@
     "failed": 0,
     "cancelled": 0,
     "fullTestSuite": false,
-    "projectedCustomerRecords": 2317,
-    "projectionDiagnosticRuns": 1,
-    "existingSeptemberReportMissingCustomerMatches": 0,
-    "allCampaignReceiptStoresAuditedSeparately": true
+    "projectedCustomerRecords": null,
+    "projectionDiagnosticRuns": 0,
+    "existingSeptemberReportMissingCustomerMatches": null,
+    "allCampaignReceiptStoresAuditedSeparately": true,
+    "qualification": "Focused test totals are retained historical evidence, not rerun for this aggregate. Current checkpoint receipt stores were independently audited; no current rendered projection diagnostic was requested or executed."
   },
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Local permanent ledger and owner-private customer system only; no company identities,emails,contact logs or credentials in this public aggregate.",
   "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
   "currentSynchronizationPurpose": "Incremental verified checkpoint only; the upcoming2026-10-25 23:50AsiaShanghai daily sync is not claimed completed.",
   "latestVerifiedSynchronizationDelta": {
-    "previousCampaignCount": 76,
-    "currentCampaignCount": 77,
+    "previousCampaignCount": 77,
+    "currentCampaignCount": 78,
     "newVerifiedCompanyReceipts": 1,
     "netValidCountChange": 1,
     "actualExecutionDate": "2026-10-25",
@@ -76,25 +77,25 @@
     "dataDate": "2026-10-25",
     "timezone": "Asia/Shanghai",
     "campaignTarget": 500,
-    "campaignConfirmed": 77,
-    "campaignRemaining": 423,
+    "campaignConfirmed": 78,
+    "campaignRemaining": 422,
     "dailyTarget": 100,
-    "dailyConfirmed": 4,
-    "dailyRemaining": 96,
+    "dailyConfirmed": 5,
+    "dailyRemaining": 95,
     "knownDeliveryFailuresExcluded": 8,
     "priorGroupDuplicatesExcluded": 1,
     "campaignChannels": {
       "email": 74,
-      "linkedin": 3
+      "linkedin": 4
     },
     "dailyChannels": {
       "email": 1,
-      "linkedin": 3
+      "linkedin": 4
     },
     "globalEmailDispatchResumed": false,
     "unattendedHostVerified": false
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); no timestamps or private customer records",
-  "dataSummaryDigest": "d8050fef690ccc9e34c04c276ab24daaeb90e03056b8448af306eda642029702",
-  "verifiedAt": "2026-10-25T08:38:40.741Z"
+  "dataSummaryDigest": "ce8ed594b905d2b5cb50376d1e1dc8f2ed6ad14e18364005fea78cd6d0c1afc6",
+  "verifiedAt": "2026-10-25T09:42:02.714Z"
 }
