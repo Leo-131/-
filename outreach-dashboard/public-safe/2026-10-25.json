@@ -4,18 +4,18 @@
   "timezone": "Asia/Shanghai",
   "goalStatus": "active",
   "campaignTarget": 500,
-  "confirmedUniqueNewSendsInCampaign": 78,
-  "remainingInCampaign": 422,
+  "confirmedUniqueNewSendsInCampaign": 79,
+  "remainingInCampaign": 421,
   "dailyTarget": 100,
-  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 5,
-  "dailyRemaining": 95,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 6,
+  "dailyRemaining": 94,
   "countedChannelsInCurrentCampaign": {
     "email": 74,
-    "linkedin": 4
+    "linkedin": 5
   },
   "countedChannelsOnDataDate": {
     "email": 1,
-    "linkedin": 4
+    "linkedin": 5
   },
   "countingRule": "Unique new company/group with real email receipt or independently reopened official LinkedIn outgoing message, exact sender/recipient/body/time and immutable screenshot. Invites,follows,forms,drafts,unknowns,historical contacts and known permanent failures excluded.",
   "deliveryStatus": "Persisted outgoing is not proof of inbox delivery or human reply.",
@@ -35,19 +35,19 @@
   "copyPolicy": "Evidence-specific company/category matching, one primary question, optional15minutevideo, approved three material links and one opt-out.",
   "dailyTerritoryVerification": "Actual bounded live agency-table read on2026-10-25; no date-only refresh.",
   "receiptConsistencyAudit": {
-    "campaignRows": 78,
-    "dailyRows": 5,
+    "campaignRows": 79,
+    "dailyRows": 6,
     "allCampaignReceiptsExactlyOnceInBothStores": true,
-    "permanentRows": 2925,
-    "privateSiteRows": 2768,
+    "permanentRows": 2926,
+    "privateSiteRows": 2769,
     "missingReceipts": 0,
     "duplicateReceipts": 0,
     "retainedExclusions": 9
   },
   "privateSystemPublication": {
-    "status": "succeeded_recovery_fix_deployed",
+    "status": "succeeded_verified_receipt_checkpoint",
     "dataDate": "2026-10-25",
-    "exactSourceCommit": "474a4bfbaa8e94f2b928a540a759798010003562",
+    "exactSourceCommit": "27b7a581dfad64ac6f86295d74b39dd52db9ec3a",
     "audienceUnchanged": "owner-private"
   },
   "validation": {
@@ -66,8 +66,8 @@
   "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
   "currentSynchronizationPurpose": "Incremental verified checkpoint only; the upcoming2026-10-25 23:50AsiaShanghai daily sync is not claimed completed.",
   "latestVerifiedSynchronizationDelta": {
-    "previousCampaignCount": 77,
-    "currentCampaignCount": 78,
+    "previousCampaignCount": 78,
+    "currentCampaignCount": 79,
     "newVerifiedCompanyReceipts": 1,
     "netValidCountChange": 1,
     "actualExecutionDate": "2026-10-25",
@@ -77,37 +77,49 @@
     "dataDate": "2026-10-25",
     "timezone": "Asia/Shanghai",
     "campaignTarget": 500,
-    "campaignConfirmed": 78,
-    "campaignRemaining": 422,
+    "campaignConfirmed": 79,
+    "campaignRemaining": 421,
     "dailyTarget": 100,
-    "dailyConfirmed": 5,
-    "dailyRemaining": 95,
+    "dailyConfirmed": 6,
+    "dailyRemaining": 94,
     "knownDeliveryFailuresExcluded": 8,
     "priorGroupDuplicatesExcluded": 1,
     "campaignChannels": {
       "email": 74,
-      "linkedin": 4
+      "linkedin": 5
     },
     "dailyChannels": {
       "email": 1,
-      "linkedin": 4
+      "linkedin": 5
     },
     "globalEmailDispatchResumed": false,
     "unattendedHostVerified": false
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); no timestamps or private customer records",
-  "dataSummaryDigest": "ce8ed594b905d2b5cb50376d1e1dc8f2ed6ad14e18364005fea78cd6d0c1afc6",
+  "dataSummaryDigest": "5829102afd4d446b50dc2083c0654b87a6c0da5794630ec10366037a957b3453",
   "systemRepair": {
     "date": "2026-10-25",
     "status": "private_site_deployment_succeeded",
     "codeSourceCommit": "474a4bfbaa8e94f2b928a540a759798010003562",
     "safePatch": "blocked-task-recovery/recovery.patch",
-    "changes": ["same_executor_blocked_task_resume", "recovery_reference_replay_guard", "cached_permanent_no_resend_flags"],
+    "changes": [
+      "same_executor_blocked_task_resume",
+      "recovery_reference_replay_guard",
+      "cached_permanent_no_resend_flags"
+    ],
     "actualNewSendsDuringRepair": 0,
     "countsUnchanged": true,
     "mailboxDeliveryRestored": false,
     "unattendedExecutorConnected": false,
     "qualification": "Resume preserves progress, channel states and all send locks; it does not authenticate, send or reconnect providers."
   },
-  "verifiedAt": "2026-10-25T11:34:53Z"
+  "verifiedAt": "2026-10-25T12:12:30Z",
+  "normalLoginRecovery": {
+    "status": "verified_same_origin_saved_password_cycle",
+    "focusAttempts": 1,
+    "submitAttempts": 1,
+    "passwordValueReadOrStored": false,
+    "challengeBypass": false,
+    "verificationScope": "Successful normal renewal, not a guarantee against future expiry or restored email delivery."
+  }
 }
