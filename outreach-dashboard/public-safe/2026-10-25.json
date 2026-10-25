@@ -4,18 +4,18 @@
   "timezone": "Asia/Shanghai",
   "goalStatus": "active",
   "campaignTarget": 500,
-  "confirmedUniqueNewSendsInCampaign": 79,
-  "remainingInCampaign": 421,
+  "confirmedUniqueNewSendsInCampaign": 80,
+  "remainingInCampaign": 420,
   "dailyTarget": 100,
-  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 6,
-  "dailyRemaining": 94,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 7,
+  "dailyRemaining": 93,
   "countedChannelsInCurrentCampaign": {
     "email": 74,
-    "linkedin": 5
+    "linkedin": 6
   },
   "countedChannelsOnDataDate": {
     "email": 1,
-    "linkedin": 5
+    "linkedin": 6
   },
   "countingRule": "Unique new company/group with real email receipt or independently reopened official LinkedIn outgoing message, exact sender/recipient/body/time and immutable screenshot. Invites,follows,forms,drafts,unknowns,historical contacts and known permanent failures excluded.",
   "deliveryStatus": "Persisted outgoing is not proof of inbox delivery or human reply.",
@@ -35,11 +35,11 @@
   "copyPolicy": "Evidence-specific company/category matching, one primary question, optional15minutevideo, approved three material links and one opt-out.",
   "dailyTerritoryVerification": "Actual bounded live agency-table read on2026-10-25; no date-only refresh.",
   "receiptConsistencyAudit": {
-    "campaignRows": 79,
-    "dailyRows": 6,
+    "campaignRows": 80,
+    "dailyRows": 7,
     "allCampaignReceiptsExactlyOnceInBothStores": true,
-    "permanentRows": 2926,
-    "privateSiteRows": 2769,
+    "permanentRows": 2927,
+    "privateSiteRows": 2770,
     "missingReceipts": 0,
     "duplicateReceipts": 0,
     "retainedExclusions": 9
@@ -47,7 +47,7 @@
   "privateSystemPublication": {
     "status": "succeeded_verified_receipt_checkpoint",
     "dataDate": "2026-10-25",
-    "exactSourceCommit": "27b7a581dfad64ac6f86295d74b39dd52db9ec3a",
+    "exactSourceCommit": "ad5ecff45edc5e2016609b1e9e702decaf389de0",
     "audienceUnchanged": "owner-private"
   },
   "validation": {
@@ -59,15 +59,15 @@
     "projectionDiagnosticRuns": 0,
     "existingSeptemberReportMissingCustomerMatches": null,
     "allCampaignReceiptStoresAuditedSeparately": true,
-    "qualification": "Fresh focused task-recovery, channel-isolation, permanent-dedup, browser/login and task-reload regressions passed162. Independent review reran32 related tests and5 extra in-memory probes. No production blocked-task transition, forced session expiry, send or projection diagnostic was performed by this repair."
+    "qualification": "Previously verified targeted recovery/dedup/browser/channel tests162 and independent32related+5probes remain historical repair evidence. No unchanged heavy regression or projection diagnostic rerun per customer. Current80/7 strict receipt, company/group and both-store consistency audit separately passed."
   },
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Local permanent ledger and owner-private customer system only; no company identities,emails,contact logs or credentials in this public aggregate.",
   "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
   "currentSynchronizationPurpose": "Incremental verified checkpoint only; the upcoming2026-10-25 23:50AsiaShanghai daily sync is not claimed completed.",
   "latestVerifiedSynchronizationDelta": {
-    "previousCampaignCount": 78,
-    "currentCampaignCount": 79,
+    "previousCampaignCount": 79,
+    "currentCampaignCount": 80,
     "newVerifiedCompanyReceipts": 1,
     "netValidCountChange": 1,
     "actualExecutionDate": "2026-10-25",
@@ -77,26 +77,26 @@
     "dataDate": "2026-10-25",
     "timezone": "Asia/Shanghai",
     "campaignTarget": 500,
-    "campaignConfirmed": 79,
-    "campaignRemaining": 421,
+    "campaignConfirmed": 80,
+    "campaignRemaining": 420,
     "dailyTarget": 100,
-    "dailyConfirmed": 6,
-    "dailyRemaining": 94,
+    "dailyConfirmed": 7,
+    "dailyRemaining": 93,
     "knownDeliveryFailuresExcluded": 8,
     "priorGroupDuplicatesExcluded": 1,
     "campaignChannels": {
       "email": 74,
-      "linkedin": 5
+      "linkedin": 6
     },
     "dailyChannels": {
       "email": 1,
-      "linkedin": 5
+      "linkedin": 6
     },
     "globalEmailDispatchResumed": false,
     "unattendedHostVerified": false
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); no timestamps or private customer records",
-  "dataSummaryDigest": "5829102afd4d446b50dc2083c0654b87a6c0da5794630ec10366037a957b3453",
+  "dataSummaryDigest": "2cf301ac0f6391799f0b68a5d63ac5071764bcefe12050a8b3a6044e64c5b8ab",
   "systemRepair": {
     "date": "2026-10-25",
     "status": "private_site_deployment_succeeded",
@@ -113,7 +113,7 @@
     "unattendedExecutorConnected": false,
     "qualification": "Resume preserves progress, channel states and all send locks; it does not authenticate, send or reconnect providers."
   },
-  "verifiedAt": "2026-10-25T12:12:30Z",
+  "verifiedAt": "2026-10-25T12:49:51Z",
   "normalLoginRecovery": {
     "status": "verified_same_origin_saved_password_cycle",
     "focusAttempts": 1,
@@ -121,5 +121,6 @@
     "passwordValueReadOrStored": false,
     "challengeBypass": false,
     "verificationScope": "Successful normal renewal, not a guarantee against future expiry or restored email delivery."
-  }
+  },
+  "sourceAcquisitionPolicy": "Reuse cached failures and prior contacts; first exact official-domain lookup may locate actual SKU/brand-onboarding source before homepage navigation. One explicit source failure is parked, not looped. No qualification thresholds changed."
 }
