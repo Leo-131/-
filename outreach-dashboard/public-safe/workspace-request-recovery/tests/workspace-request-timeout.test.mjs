@@ -2,6 +2,7 @@ import runTest from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {createHash} from 'node:crypto';
 
 const source=fs.readFileSync(new URL('../web/workspace-premium.js',import.meta.url),'utf8');
 const historySource=fs.readFileSync(new URL('../web/task-delivery-history.js',import.meta.url),'utf8');
@@ -11,11 +12,17 @@ const empty=()=>response({ok:true,tasks:[],bridge:{deliveries:{}}});
 const task=()=>response({ok:true,task:{id:'synthetic-task',status:'queued'}});
 const gate=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};};
 async function settle(){for(let n=0;n<32;n++)await Promise.resolve();}
+const identityStorageKey='workspace-task-identities-v1';
+let uuidSequence=0;
+function sessionFixture(entries=[]){const values=new Map(entries);return{values,
+ getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};}
+const digest=async(algorithm,bytes)=>{assert.equal(algorithm,'SHA-256');
+ return Uint8Array.from(createHash('sha256').update(bytes).digest()).buffer;};
 
 // Deterministic browser-shaped fixtures only: no network, credentials, real
 // task records, browser control, timers or file writes leave this VM.
-function fixture(fetcher=()=>empty()){
- let now=0,sequence=0,uuids=0;
+function fixture(fetcher=()=>empty(),options={}){
+ let now=0,sequence=0;
  const calls=[],timers=new Map(),tools=new Map(),listeners={};
  const element=(value='')=>({value,textContent:'',innerHTML:'',disabled:false,dataset:{}});
  const elements={
@@ -35,10 +42,13 @@ function fixture(fetcher=()=>empty()){
  elements['development-goal-form']={dataset:{},reportValidity:()=>true,
   addEventListener:(event,handler)=>{listeners[event]=handler;},
   querySelector:selector=>{assert.equal(selector,'button[type=submit]');return button;}};
- const context={URL,AbortController,
+ const sessionStorage=Object.hasOwn(options,'sessionStorage')?options.sessionStorage:sessionFixture();
+ const context={URL,AbortController,TextEncoder,
   location:{href:'https://workspace.test/?view=workspace'},
   localStorage:{getItem:()=>null,setItem:()=>{}},
-  crypto:{randomUUID:()=>`synthetic-request-${++uuids}`},
+  sessionStorage,
+  crypto:Object.hasOwn(options,'crypto')?options.crypto:{randomUUID:()=>`synthetic-request-${++uuidSequence}`,
+   subtle:{digest:options.digest||digest}},
   MutationObserver:class{observe(){}},
   document:{body:{},getElementById:id=>elements[id]??null,querySelector:()=>null,
    modelContext:{registerTool:tool=>{tools.set(tool.name,tool);}}},
@@ -59,7 +69,7 @@ function fixture(fetcher=()=>empty()){
   }
   now=until;await settle();
  };
- return{calls,elements,button,timers,tools,tick,ready:settle,
+ return{calls,elements,button,timers,tools,tick,sessionStorage,ready:settle,
   submit:()=>elements['development-goal-form'].onsubmit({preventDefault(){}}),
   refresh:()=>elements['goal-refresh'].onclick(),bridge:()=>elements['bridge-check'].onclick(),
   input:()=>listeners.input?.(),
@@ -246,4 +256,99 @@ test('confirmed POST and WebMCP PATCH return before an unrelated history refresh
  let result;void f.tools.get('accept_development_task').execute({id:'synthetic-task',executor:'synthetic-controller'})
   .then(value=>{result=value;});await settle();assert.equal(result?.task?.status,'queued');
  await f.tick(10000);assert.equal(f.timers.size,0);assert.equal(writes(f).length,2);
+});
+
+test('same-tab reload keeps the queued request ID without automatic replay or restored consent',async()=>{
+ const session=sessionFixture(),ids=[];
+ const fetcher=(_url,options)=>{if(options.method==='POST'){ids.push(JSON.parse(options.body).id);return task();}return empty();};
+ const first=fixture(fetcher,{sessionStorage:session});await first.ready();await first.submit();
+ const reloaded=fixture(fetcher,{sessionStorage:session});await reloaded.ready();
+ assert.equal(ids.length,1);assert.equal(reloaded.elements['goal-send-consent'].checked,false);
+ await reloaded.submit();assert.equal(ids.length,2);assert.equal(ids[1],ids[0]);
+});
+
+test('different submitted payloads are independent while a restored payload keeps its earlier ID',async()=>{
+ const session=sessionFixture(),ids=[];
+ const f=fixture((_url,options)=>{if(options.method==='POST'){ids.push(JSON.parse(options.body).id);return task();}return empty();},{sessionStorage:session});
+ await f.ready();const original=f.elements['goal-text'].value;await f.submit();
+ f.elements['goal-text'].value='Another synthetic task';await f.submit();
+ f.elements['goal-text'].value=original;await f.submit();assert.notEqual(ids[0],ids[1]);assert.equal(ids[2],ids[0]);
+});
+
+test('stored identities contain only SHA-256 fingerprints and opaque IDs, not form contents or consent',async()=>{
+ const f=fixture();await f.ready();f.elements['goal-text'].value='Private synthetic goal marker';
+ f.elements['goal-market'].value='Private synthetic market';f.elements['goal-kind'].value='develop';
+ f.elements['goal-send-consent'].checked=true;await f.submit();
+ const stored=f.sessionStorage.getItem(identityStorageKey);assert.ok(stored);
+ assert.doesNotMatch(stored,/Private synthetic|Singapore|authorizedSend|password|email|goal|market|develop/);
+ const value=JSON.parse(stored);assert.deepEqual(Object.keys(value).sort(),['requests','version']);assert.equal(value.version,1);
+ assert.equal(Object.keys(value.requests).length,1);
+ for(const [fingerprint,id]of Object.entries(value.requests)){assert.match(fingerprint,/^[a-f0-9]{64}$/);assert.match(id,/^synthetic-request-\d+$/);}
+});
+
+const invalidSessions=[
+ ['unavailable',undefined],
+ ['read-denied',{getItem(){throw Error('synthetic read denied');},setItem(){}}],
+ ['write-denied',{getItem:()=>null,setItem(){throw Error('synthetic write denied');}}],
+ ['unverified-write',{getItem:()=>null,setItem(){}}],
+ ['malformed',sessionFixture([[identityStorageKey,'{bad JSON']])],
+ ['wrong-version',sessionFixture([[identityStorageKey,JSON.stringify({version:99,requests:{}})]])],
+ ['invalid-fingerprint',sessionFixture([[identityStorageKey,JSON.stringify({version:1,requests:{plaintext:'synthetic-request-old'}})]])],
+ ['invalid-id',sessionFixture([[identityStorageKey,JSON.stringify({version:1,requests:{['a'.repeat(64)]:'../invalid'}})]])],
+ ['duplicate-ids',sessionFixture([[identityStorageKey,JSON.stringify({version:1,requests:{['a'.repeat(64)]:'synthetic-request-old',['b'.repeat(64)]:'synthetic-request-old'}})]])]
+];
+for(const [name,session]of invalidSessions)test(`identity ${name} fails before POST and releases the button`,async()=>{
+ const f=fixture(()=>empty(),{sessionStorage:session});await f.ready();await f.submit();
+ assert.equal(writes(f).length,0);assert.equal(f.button.disabled,false);assert.equal(f.timers.size,0);
+ assert.match(f.elements['goal-status'].textContent,/未提交/);
+ assert.equal(f.elements['goal-text'].value,'Synthetic customer research only');
+});
+
+for(const [name,crypto]of [
+ ['missing',null],['digest-rejected',{randomUUID:()=> 'synthetic-request-safe',subtle:{digest:async()=>{throw Error('synthetic crypto failure');}}}],
+ ['short-digest',{randomUUID:()=> 'synthetic-request-safe',subtle:{digest:async()=>new ArrayBuffer(8)}}],
+ ['invalid-uuid',{randomUUID:()=> '../invalid',subtle:{digest}}]
+])test(`identity crypto ${name} fails closed before POST`,async()=>{
+ const f=fixture(()=>empty(),{crypto});await f.ready();await f.submit();
+ assert.equal(writes(f).length,0);assert.equal(f.button.disabled,false);assert.match(f.elements['goal-status'].textContent,/未提交/);
+});
+
+test('async fingerprinting holds the mutex and a hung digest has a bounded no-submit outcome',async()=>{
+ const hash=gate();const f=fixture(()=>empty(),{digest:()=>hash.promise});await f.ready();
+ const pending=f.submit();await settle();await f.submit();
+ assert.equal(writes(f).length,0);assert.equal(f.button.disabled,true);
+ await f.tick(10000);await pending;assert.equal(f.button.disabled,false);assert.equal(writes(f).length,0);
+ assert.match(f.elements['goal-status'].textContent,/未提交/);assert.equal(f.timers.size,0);
+ hash.resolve(await digest('SHA-256',new Uint8Array([1])));await settle();assert.equal(writes(f).length,0);
+ assert.equal(f.sessionStorage.getItem(identityStorageKey),null,'a late digest cannot persist or submit');
+});
+
+const listedTask=(id,status)=>({id,status,request:{goal:'Synthetic task',market:'Singapore',target:1},
+ completedCount:0,summary:'Synthetic only',history:[]});
+for(const state of ['queued','running','blocked','failed','missing','401','403','not-ok','other-completed'])
+ test(`task GET ${state} does not retire an unresolved request identity`,async()=>{
+  const session=sessionFixture(),ids=[];let read=()=>empty();
+  const fetcher=(_url,options)=>{if(options.method==='POST'){ids.push(JSON.parse(options.body).id);return task();}return read();};
+  const f=fixture(fetcher,{sessionStorage:session});await f.ready();await f.submit();
+  read=()=>['401','403'].includes(state)?response({ok:false,error:'Synthetic denial'},Number(state)):
+   response({ok:state!=='not-ok',tasks:state==='missing'?[]:[listedTask(state==='other-completed'?'synthetic-other-id':ids[0],
+    state==='not-ok'||state==='other-completed'?'completed':state)],bridge:{deliveries:{}}});
+  await f.refresh();await f.submit();assert.equal(ids[1],ids[0]);
+ });
+
+for(const state of ['completed','cancelled'])test(`exact authenticated GET ${state} permits a new explicit task identity`,async()=>{
+ const ids=[];let read=()=>empty();const f=fixture((_url,options)=>{if(options.method==='POST'){
+  ids.push(JSON.parse(options.body).id);return task();}return read();});
+ await f.ready();await f.submit();read=()=>response({ok:true,tasks:[listedTask(ids[0],state)],bridge:{deliveries:{}}});
+ await f.refresh();assert.equal(ids.length,1,'terminal observation alone never submits');
+ await f.submit();assert.notEqual(ids[1],ids[0]);
+});
+
+test('a timed-out GET cannot retire a pending identity from its late terminal body',async()=>{
+ const ids=[],body=gate();let read=()=>empty();const f=fixture((_url,options)=>{if(options.method==='POST'){
+  ids.push(JSON.parse(options.body).id);return task();}return read();});
+ await f.ready();await f.submit();read=()=>({ok:true,status:200,json:()=>body.promise});
+ const pending=f.refresh();await f.tick(10000);await pending;
+ body.resolve({ok:true,tasks:[listedTask(ids[0],'completed')],bridge:{deliveries:{}}});await settle();
+ read=()=>empty();await f.submit();assert.equal(ids[1],ids[0]);
 });
