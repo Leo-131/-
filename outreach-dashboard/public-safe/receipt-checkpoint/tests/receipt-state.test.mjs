@@ -32,6 +32,8 @@ test('same company or group cannot inflate daily unique counts',()=>{
 
 test('known delivery failure or exclusion cannot enter any daily count path',()=>{
   for(const patch of [{countAsNewCustomer:false},{deliveryStatus:'hard_bounced'},
+    {deliveryStatus:'delivery_failed'},
+    {newCustomerDevelopmentStatus:'excluded_delivery_failure'},
     {newCustomerDevelopmentStatus:'excluded_hard_bounce'},
     {newCustomerDevelopmentStatus:'excluded_prior_group_contact'}]){
     const rejected=row(2,patch),before=structuredClone(rejected);

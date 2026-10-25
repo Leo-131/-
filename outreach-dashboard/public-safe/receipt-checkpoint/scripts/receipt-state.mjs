@@ -5,8 +5,8 @@ export const isKnownCountry=value=>typeof value==='string'&&!!value.trim()
 // Sent is a historical event, not proof of valid new-customer delivery. Only
 // explicit machine states exclude counting; never infer failure from free text.
 export const isExcludedNewCustomerReceipt=row=>row?.countAsNewCustomer===false
-  || row?.deliveryStatus==='hard_bounced'
-  || ['excluded_hard_bounce','excluded_prior_group_contact'].includes(row?.newCustomerDevelopmentStatus);
+  || ['hard_bounced','delivery_failed'].includes(row?.deliveryStatus)
+  || ['excluded_hard_bounce','excluded_delivery_failure','excluded_prior_group_contact'].includes(row?.newCustomerDevelopmentStatus);
 
 export function actualExecutionDay(row) {
   const timestamp=row.sentAtLocal || row.timestamp;

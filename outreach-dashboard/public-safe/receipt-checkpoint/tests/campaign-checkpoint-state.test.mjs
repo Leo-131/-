@@ -136,6 +136,8 @@ test('unknown/prepared/draft,nonexclusive ICP threshold and unknown country neve
 
 test('known delivery or development exclusions fail closed without redundant flags',()=>{
  for(const mutation of [{deliveryStatus:'hard_bounced'},
+  {deliveryStatus:'delivery_failed'},
+  {newCustomerDevelopmentStatus:'excluded_delivery_failure'},
   {newCustomerDevelopmentStatus:'excluded_hard_bounce'},
   {newCustomerDevelopmentStatus:'excluded_prior_group_contact'}]){
   const input=fixture();Object.assign(input.receipt,mutation);
