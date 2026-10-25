@@ -45,13 +45,13 @@
     "retainedExclusions": 9
   },
   "privateSystemPublication": {
-    "status": "pending_latest_checkpoint_verification",
+    "status": "succeeded_recovery_fix_deployed",
     "dataDate": "2026-10-25",
-    "exactSourceCommit": null,
+    "exactSourceCommit": "474a4bfbaa8e94f2b928a540a759798010003562",
     "audienceUnchanged": "owner-private"
   },
   "validation": {
-    "focusedTestsPassed": 28,
+    "focusedTestsPassed": 162,
     "failed": 0,
     "cancelled": 0,
     "fullTestSuite": false,
@@ -59,7 +59,7 @@
     "projectionDiagnosticRuns": 0,
     "existingSeptemberReportMissingCustomerMatches": null,
     "allCampaignReceiptStoresAuditedSeparately": true,
-    "qualification": "Focused test totals are retained historical evidence, not rerun for this aggregate. Current checkpoint receipt stores were independently audited; no current rendered projection diagnostic was requested or executed."
+    "qualification": "Fresh focused task-recovery, channel-isolation, permanent-dedup, browser/login and task-reload regressions passed162. Independent review reran32 related tests and5 extra in-memory probes. No production blocked-task transition, forced session expiry, send or projection diagnostic was performed by this repair."
   },
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Local permanent ledger and owner-private customer system only; no company identities,emails,contact logs or credentials in this public aggregate.",
@@ -97,5 +97,17 @@
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); no timestamps or private customer records",
   "dataSummaryDigest": "ce8ed594b905d2b5cb50376d1e1dc8f2ed6ad14e18364005fea78cd6d0c1afc6",
-  "verifiedAt": "2026-10-25T09:42:02.714Z"
+  "systemRepair": {
+    "date": "2026-10-25",
+    "status": "private_site_deployment_succeeded",
+    "codeSourceCommit": "474a4bfbaa8e94f2b928a540a759798010003562",
+    "safePatch": "blocked-task-recovery/recovery.patch",
+    "changes": ["same_executor_blocked_task_resume", "recovery_reference_replay_guard", "cached_permanent_no_resend_flags"],
+    "actualNewSendsDuringRepair": 0,
+    "countsUnchanged": true,
+    "mailboxDeliveryRestored": false,
+    "unattendedExecutorConnected": false,
+    "qualification": "Resume preserves progress, channel states and all send locks; it does not authenticate, send or reconnect providers."
+  },
+  "verifiedAt": "2026-10-25T11:34:53Z"
 }
