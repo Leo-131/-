@@ -2,11 +2,11 @@
   "dataDate": "2026-10-25",
   "timezone": "Asia/Shanghai",
   "campaignTarget": 500,
-  "confirmedUniqueNewSendsInCampaign": 74,
-  "remainingInCampaign": 426,
-  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 1,
+  "confirmedUniqueNewSendsInCampaign": 75,
+  "remainingInCampaign": 425,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 2,
   "previousDateConfirmedNewSends": 33,
-  "countingRule": "Unique new company/group actual Sent recipient,body,time and non-draft permanent message ID; drafts,unknowns,historical contacts,known hard bounces and final returned delivery failures excluded. Actual Sent history retained.",
+  "countingRule": "Unique new company/group: actual non-draft email receipt or independently reopened official LinkedIn outgoing message with verified sender/recipient/thread/body/time and saved screenshot. Invitations,follows,forms,drafts,unknowns,historical contacts and known delivery failures excluded; history retained.",
   "deliveryStatus": "Sent history retained separately from explicit permanent failures; absence of a bounce does not establish delivery or human reply.",
   "hardBounceReceiptsExcluded": 7,
   "priorGroupDuplicateReceiptsExcluded": 1,
@@ -22,12 +22,12 @@
   "unknownSendAttemptsInCurrentCampaign": 0,
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Local permanent ledger and owner-private customer system only; no identities/emails/contact logs or credentials in public repository",
-  "dataSourceCommit": "dc4721d44bfb79a7d191952e78ffa2d6ae335d8f",
-  "repairSourceCommit": "dc4721d44bfb79a7d191952e78ffa2d6ae335d8f",
-  "currentFocusedTestsPassed": 136,
-  "currentFocusedScope": "Nine explicit login/recovery/receipt/checkpoint/patch-generator/real-role-projection files:136 passed/0 failed,230066.1801ms; not a full suite. Role projection alone201572.7046ms. Preserve passed checks when resuming packaging.",
+  "dataSourceCommit": "0ae1c012af7a9dfa50e835f526465d0263580d93",
+  "repairSourceCommit": "0ae1c012af7a9dfa50e835f526465d0263580d93",
+  "currentFocusedTestsPassed": 126,
+  "currentFocusedScope": "Eight focused receipt/campaign/patch-generator/browser-recovery files:126 passed,0 failed. Includes23 synthetic read-only social-proposal cases; not a full suite and not evidence that a real send occurred.",
   "freshFullTestSuiteRun": false,
-  "siteVersion": 230,
+  "siteVersion": 233,
   "siteDeploymentStatus": "succeeded",
   "dedupRepair": "Terminal separated Singapore Pte Ltd punctuation equivalence only; exact company/group permanent locks preserved; no fuzzy legal-entity merge.",
   "dedupCodeSha256": "101ce1854eaa1fba226fe951823765c8a50a725905bbab1f5eeace6adaf6ab1d",
@@ -49,13 +49,13 @@
   },
   "previousRepairFocusedTestsPassed": 159,
   "receiptConsistencyAudit": {
-    "campaignRows": 74,
-    "dailyRows": 1,
+    "campaignRows": 75,
+    "dailyRows": 2,
     "allCampaignReceiptsExactlyOnceInBothStores": true,
-    "projectedDiagnosticRecords": 2314,
+    "projectedDiagnosticRecords": 2315,
     "missingReceiptCustomerMatches": 0,
-    "permanentRows": 2921,
-    "privateSiteRows": 2764,
+    "permanentRows": 2922,
+    "privateSiteRows": 2765,
     "failedSentHistoryRowsRetained": true
   },
   "concurrentBrowserRecoverySource": "299662438a6375e2513d5536c395e95bf3c0728e",
@@ -87,9 +87,9 @@
     "passwordSubmissionsDuringEntryAcceptance": 0
   },
   "newVerifiedSendsSincePreviousSync": 1,
-  "concurrentRoleSourcePreserved": "f03f015d95b74adf8b0c67520323c106000c450e",
-  "synchronizationQualification": "Merged latest owner changes through f03f015 without overwriting or force push; identical built and pushed source deployed owner-private at230. This public file contains anonymous aggregates only; receipt identities and customer data remain private.",
-  "verifiedAt": "2026-10-25T05:10:08.093842+00:00",
+  "concurrentRoleSourcePreserved": "ad9befb2a5b49aa7bb19ba3a20a920df73d21561",
+  "synchronizationQualification": "Preserved concurrent owner source and source merge,normal push only; exact built source deployed owner-private at233. Anonymous aggregates and synthetic safe-code extract only; full customer identities,emails,message bodies and credentials remain private.",
+  "verifiedAt": "2026-10-25T05:48:38.821Z",
   "checkpointRecovery": {
     "sameReceiptProposalUpdatesCampaignAndContinuation": true,
     "legacyAttemptsPreserved": true,
@@ -125,18 +125,20 @@
     "normalizedSourceSha256": "76574997ca18f314fc040ddfee280a98c3251cfdf3fc36305912349e5da04d26"
   },
   "currentRepairRevalidation": {
-    "newProductionCodeChange": false,
+    "newProductionCodeChange": true,
     "currentBrowserReadConnected": true,
     "workspaceAuthenticated": true,
     "mailboxAuthenticated": true,
-    "authenticationQualification": "Actual authenticated workbench and permanent Sent view observed without a new login submission. A new eligible company's actual Sent receipt was independently verified and persisted; inbox delivery and human reply remain unverified.",
+    "authenticationQualification": "Actual authenticated native browser confirmed; one separately verified outgoing LinkedIn company message was persisted. Session expiry,CAPTCHA,MFA and risk controls remain subject to normal authorization; no global email-delivery recovery claim.",
     "unattendedHostVerified": false,
     "passwordSubmissions": 0,
     "priorBootRepairPreserved": true,
     "scriptRemovalIsNotCancellation": true,
     "normalSessionExpiryAndChallengesRemain": true,
     "currentSenderReverifiedForNewSend": true,
-    "normalSavedPasswordRenewalVerified": true
+    "normalSavedPasswordRenewalVerified": true,
+    "linkedinAuthenticated": true,
+    "passwordSubmissionsDuringThisReceiptRepair": 0
   },
   "currentFocusedTestDate": "2026-10-25",
   "actualSentReceiptsAddedSincePrior75Snapshot": 2,
@@ -195,10 +197,46 @@
     "sourceOrSendGatesWeakened": false
   },
   "newReceiptSinceCorrected73Snapshot": {
-    "confirmedNewCompanies": 1,
+    "confirmedNewCompanies": 2,
     "actualExecutionDate": "2026-10-25",
-    "totalAfterReceipt": 74,
-    "remaining": 426,
+    "totalAfterReceipt": 75,
+    "remaining": 425,
     "noDeliveryOrReplyClaim": true
-  }
+  },
+  "channelReceiptRepair": {
+    "emailProviderIdBehaviorUnchanged": true,
+    "linkedinRequiresIndependentReopen": true,
+    "linkedinCompanyProfileDedup": true,
+    "appendOnlyEvidenceObservations": true,
+    "canonicalMessageIdentityStable": true,
+    "invitesFollowsFormsUnknownsRejected": true,
+    "noFabricatedProviderMessageId": true,
+    "dailyCampaignPermanentReceiptAligned": true,
+    "dailyContinuationAlsoUpdated": true,
+    "privateGeneratorScreenshotBytesHashChecked": true,
+    "actualImageSemanticsRequireController": true,
+    "normalizedSourceSha256": {
+      "validator": "e48716c60abdd099347737a7129ca6bde03c181c847c49f40242f89f7e5896bf",
+      "daily": "bc4a786f8995efa4d8694e24cc4fae8f2ed9c957cce2c222b5ef1adebff0baf4",
+      "campaign": "bedc16387aec6f27d67b09427ecf7a45d3c78db4b03e06d9b431939c7e4c03b3"
+    },
+    "publicExtractFocusedTestsPassed": 55
+  },
+  "countedChannelsInCurrentCampaign": {
+    "email": 74,
+    "linkedin": 1
+  },
+  "countedChannelsOnDataDate": {
+    "email": 1,
+    "linkedin": 1
+  },
+  "latestVerifiedSynchronizationDelta": {
+    "previousCampaignCount": 74,
+    "currentCampaignCount": 75,
+    "newVerifiedCompanyReceipts": 1,
+    "netValidCountChange": 1,
+    "actualExecutionDate": "2026-10-25",
+    "humanRepliesOrDeliveryClaimed": false
+  },
+  "dataSummaryDigest": "ac41ab808aed2c457e17e0ce6af066f87bc486635d55a94ffbf197debe0ac630"
 }

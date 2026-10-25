@@ -1,9 +1,11 @@
 # Receipt checkpoint recovery — safe source extract
 
-Source: private Site commit `4b759e8cb93cf85fc804399471a40fb31a5d9de7`, 2026-10-24 Asia/Shanghai.
+Source: private Site commit `0ae1c012af7a9dfa50e835f526465d0263580d93`, 2026-10-25 Asia/Shanghai, including merge `c066bdbeedf138331ac8cc809cc9cc0bdd5ab6ba`. The merge preserves concurrent owner changes.
 
 This standalone pure-state extract contains no real customer identity, contact address, receipt ID, credential or customer ledger. All addresses and receipts in tests are explicitly synthetic `.test` fixtures, not outreach evidence.
 
-Run `node --test tests/campaign-checkpoint-state.test.mjs` from this directory. The private confirmed-receipt generator integrates the state builder into one apply_patch proposal; it is not included because its operational configuration belongs in the private system.
+Run `node --test tests/channel-receipt-state.test.mjs tests/cross-channel-campaign-receipt.test.mjs tests/receipt-state.test.mjs tests/campaign-checkpoint-state.test.mjs` from this directory. The current extract passed55 focused cases. Private confirmed-receipt generators integrate the state builder into one apply_patch proposal; they are not included because their operational configuration belongs in the private system.
 
 The repair keeps current count and continuation state aligned, rejects duplicate/excluded/conflicting receipts, binds an unchanged exclusion snapshot in compact campaign proposals, and binds remote coverage to a receipt-content digest. It does not authorize sending, claim delivery/replies, bypass authentication or prove an unattended host is connected.
+
+Email retains its actual non-draft provider ID. LinkedIn requires a persisted actual thread, independently verified sender and company, visible outgoing body, exact body hash, screenshot hash and observation time. Its computed evidence key is local, not a fabricated provider message ID. The verified company profile participates in company/group deduplication even if its display name changes. Repeat observations preserve every valid screenshot in append-only evidence history and do not increment counts. Invitations, follows, forms, drafts and unknown outcomes cannot qualify. The controller must independently collect real browser evidence; structural tests are not proof of outreach.

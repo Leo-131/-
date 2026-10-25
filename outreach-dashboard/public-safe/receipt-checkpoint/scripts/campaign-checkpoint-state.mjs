@@ -2,10 +2,11 @@
 import {isDeepStrictEqual} from 'node:util';
 import {createHash} from 'node:crypto';
 import {actualExecutionDay,isKnownCountry,isExcludedNewCustomerReceipt} from './receipt-state.mjs';
+import {verifiedReceiptKey,verifiedSocialCompanyIdentity,mergeVerifiedReceiptObservations} from './channel-receipt-state.mjs';
 
-const receiptId=row=>row?.mailId||row?.messageId;
-const keys=row=>globalThis.OutreachEfficiency.identityKeys({...row,website:row.source})
- .filter(key=>!key.startsWith('id:'));
+const receiptId=verifiedReceiptKey;
+const keys=row=>[...globalThis.OutreachEfficiency.identityKeys({...row,website:row.source})
+ .filter(key=>!key.startsWith('id:')),verifiedSocialCompanyIdentity(row)].filter(Boolean);
 const stable=value=>Array.isArray(value)?value.map(stable):value&&typeof value==='object'?
  Object.fromEntries(Object.keys(value).sort().filter(key=>value[key]!==undefined).map(key=>[key,stable(value[key])])):value;
 export function campaignReceiptDigest({campaign,daily}){
@@ -16,7 +17,7 @@ export function campaignReceiptDigest({campaign,daily}){
 }
 function validReceipt(row){
  const id=receiptId(row),time=Date.parse(row?.sentAtLocal||row?.timestamp);
- if(!row||row.status!=='sent_confirmed'||!/^1_0:/.test(id||'')||!row.company
+ if(!row||row.status!=='sent_confirmed'||!row.company
   ||!(row.icp>70)||!isKnownCountry(row.country)||!Number.isFinite(time)||isExcludedNewCustomerReceipt(row))
   throw Error('Verified campaign receipt required');
  actualExecutionDay(row);return {id,time};
@@ -26,7 +27,10 @@ function sameReceipt(left,right){
   group:row.group||null,aliases:[...keys(row)].sort(),
   confirmationEvidence:row.confirmationEvidence||null,source:row.source||null,
   sourceEvidence:row.sourceEvidence||null,scoreBreakdown:row.scoreBreakdown||null,
-  time:Date.parse(row.sentAtLocal||row.timestamp),email:row.publicBusinessEmail||row.recipientEmail||null});
+  time:Date.parse(row.sentAtLocal||row.timestamp),email:row.publicBusinessEmail||row.recipientEmail||null,
+  // The verified key already binds social sender/recipient/thread/time/bodyHash.
+  // New observedAt/screenshot proof is additive, not a conflicting message ID.
+  channel:row.channel||'email'});
  return isDeepStrictEqual(core(left),core(right));
 }
 function snapshotSynchronization(previous,prior){
@@ -67,7 +71,13 @@ export function buildCampaignCheckpoint({campaign,daily,continuation={},receipt=
   if(time<started)throw Error('Receipt precedes campaign');
   const excluded=campaign.excludedReceipts||[];
   if(excluded.some(row=>receiptId(row)===id))throw Error('Excluded receipt cannot be restored');
-  if(existing){if(!sameReceipt(existing,receipt))throw Error('Conflicting message ID');}
+  if(existing){
+   if(!sameReceipt(existing,receipt))throw Error('Conflicting message ID');
+   if(receipt.channel==='linkedin'){
+    const merged=mergeVerifiedReceiptObservations(existing,receipt);
+    records[records.indexOf(existing)]=merged;byId.set(id,merged);
+   }
+  }
   else{
    if(records.length>=campaign.target)throw Error('Campaign target already reached');
    if(keys(receipt).some(key=>owners.has(key))||excluded.some(row=>keys(row).some(key=>keys(receipt).includes(key))))
