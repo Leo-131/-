@@ -1,0 +1,107 @@
+diff --git a/server/browser-recovery-executor.mjs b/server/browser-recovery-executor.mjs
+index 67cb8ce..0d5ecee 100644
+--- a/server/browser-recovery-executor.mjs
++++ b/server/browser-recovery-executor.mjs
+@@ -6,6 +6,27 @@ const sessions=new Map();
+ const bindingFields=['origin','browserId','sessionId','expectedAccount'];
+ const validIdentity=value=>typeof value==='string'&&value.length>0&&value.length<=512
+  &&value.trim()===value&&!/[\u0000-\u001f\u007f]/.test(value);
++const validCycle=value=>Number.isSafeInteger(value)&&value>=0;
++const validVerifiedAt=value=>typeof value==='string'&&value.length===24
++ &&Number.isFinite(Date.parse(value))&&new Date(value).toISOString()===value;
++function lifecycleState(checkpoint) {
++ if(!['loginCycle','cycleVerifiedAt','priorCycle'].some(key=>Object.hasOwn(checkpoint,key)))return {};
++ if(!validCycle(checkpoint.loginCycle))return null;
++ const state={loginCycle:checkpoint.loginCycle};
++ if(Object.hasOwn(checkpoint,'cycleVerifiedAt')) {
++  if(!validVerifiedAt(checkpoint.cycleVerifiedAt))return null;
++  state.cycleVerifiedAt=checkpoint.cycleVerifiedAt;
++ }
++ if(checkpoint.loginCycle>0) {
++  const previous=checkpoint.priorCycle;
++  if(!previous||!validCycle(previous.loginCycle)||previous.loginCycle!==checkpoint.loginCycle-1
++   ||typeof previous.focusAttempted!=='boolean'||typeof previous.submitAttempted!=='boolean'
++   ||!validVerifiedAt(previous.cycleVerifiedAt))return null;
++  state.priorCycle={loginCycle:previous.loginCycle,focusAttempted:previous.focusAttempted,
++   submitAttempted:previous.submitAttempted,cycleVerifiedAt:previous.cycleVerifiedAt};
++ }else if(Object.hasOwn(checkpoint,'priorCycle'))return null;
++ return state;
++}
+ function bindingProblem(input,browserId) {
+  const expected={origin:input.origin,browserId,sessionId:input.sessionId,
+   expectedAccount:input.expectedAccount};
+@@ -47,6 +68,8 @@ async function runLoginRecovery({adapter,inventory=[],origin,sessionId,expectedA
+   .map(key=>[key,checkpoint[key]]));
+  for(const key of ['focusAttempted','submitAttempted'])
+   if(typeof checkpoint[key]==='boolean')state[key]=checkpoint[key];
++ const lifecycle=lifecycleState(checkpoint);
++ if(lifecycle)state={...state,...lifecycle};
+  const result=status=>({status,sendPerformed:false,maySend:false,
+   historyRecheckRequired:true,checkpoint:{...state}});
+  const failure=error=>{
+@@ -66,6 +89,7 @@ async function runLoginRecovery({adapter,inventory=[],origin,sessionId,expectedA
+  if(!selected.browserId)return result('connection_required');
+  const problem=bindingProblem({origin,sessionId,expectedAccount,checkpoint},selected.browserId);
+  if(problem)return {...result('inspection_required'),code:problem};
++ if(!lifecycle)return {...result('inspection_required'),code:'checkpoint_cycle_invalid'};
+  const context={origin,browserId:selected.browserId,sessionId,expectedAccount,
+   extensionInstanceId:selected.extensionInstanceId};
+  const duration=Number.isFinite(timeoutMs)&&timeoutMs>0?Math.min(timeoutMs,30000):10000;
+@@ -87,9 +111,10 @@ async function runLoginRecovery({adapter,inventory=[],origin,sessionId,expectedA
+   try{await invoke(()=>saveCheckpoint({...state}),{sideEffect:true});return true;}
+   catch{return false;}
+  };
+- // At most focus + submit. Allow two read-only observations for delayed autofill.
+- let autofillObservations=0;
+- for(let step=0;step<5;step++) {
++ // At most one new successful-cycle renewal, focus + submit. A new cycle adds
++ // only a fresh read; allow two read-only observations for delayed autofill.
++ let autofillObservations=0,cycleOpened=false;
++ for(let step=0;step<6;step++) {
+   let observed;
+   try{observed=await invoke(()=>adapter.inspect(context));}
+   catch(error){return failure(error);}
+@@ -102,16 +127,40 @@ async function runLoginRecovery({adapter,inventory=[],origin,sessionId,expectedA
+    termsRequired:observed.termsRequired,permissionRequired:observed.permissionRequired,
+    focusAttempted:state.focusAttempted,submitAttempted:state.submitAttempted};
+   const {action}=recoveryDecision({inventory,requestedBrowser,sendState,loginState});
++  // A successful old cycle is not an unresolved login submission forever.
++  // Retire it only after a fresh, complete, challenge-free same-origin form.
++  // Never reset an unknown submission, bind a new account, or clear send locks.
++  if(!cycleOpened&&state.cycleVerifiedAt&&loginState.authorizedSameOrigin===true
++   &&loginState.formVisible===true&&loginState.authenticated===false
++   &&loginState.challenge==='none'&&['empty','filled'].includes(loginState.passwordState)
++   &&![loginState.captchaRequired,loginState.mfaRequired,loginState.termsRequired,
++    loginState.permissionRequired].some(Boolean)) {
++   if(state.loginCycle===Number.MAX_SAFE_INTEGER)return result('inspection_required');
++   const previous=state;
++   state={...Object.fromEntries(bindingFields.map(key=>[key,state[key]])),
++    loginCycle:state.loginCycle+1,focusAttempted:false,submitAttempted:false,
++    priorCycle:{loginCycle:state.loginCycle,focusAttempted:state.focusAttempted,
++     submitAttempted:state.submitAttempted,cycleVerifiedAt:state.cycleVerifiedAt}};
++   if(!await persist()){state=previous;return result('checkpoint_failed');}
++   cycleOpened=true;continue; // Re-inspect after durable transition, before action.
++  }
+   if(action==='recheck_sender_and_history') {
+    let verified;
+    try{verified=await invoke(()=>adapter.verifySession(context));}
+    catch(error){return failure(error);}
+    // No send gate is cleared. Full company/group and recipient dedup must run
+    // again outside recovery even after a session is successfully verified.
+-   return result(verified?.authenticated===true&&verified?.senderVerified===true
++   const matches=verified?.authenticated===true&&verified?.senderVerified===true
+     &&verified.origin===context.origin&&verified.browserId===context.browserId
+-    &&verified.sessionId===context.sessionId&&verified.account===context.expectedAccount
+-    ?'session_verified':'verification_required');
++    &&verified.sessionId===context.sessionId&&verified.account===context.expectedAccount;
++   if(!matches)return result('verification_required');
++   if(!state.cycleVerifiedAt) {
++    const previous=state;
++    state={...state,loginCycle:state.loginCycle??0,cycleVerifiedAt:new Date().toISOString()};
++    // Reusable completion is durable, not merely a click or an in-memory flag.
++    if(!await persist()){state=previous;return result('checkpoint_failed');}
++   }
++   return result('session_verified');
+   }
+   if(action==='observe_login_result')return result('login_pending');
+   if(action==='handoff_required') {
