@@ -4,26 +4,28 @@
   "timezone": "Asia/Shanghai",
   "goalStatus": "active",
   "campaignTarget": 500,
-  "confirmedUniqueNewSendsInCampaign": 84,
-  "remainingInCampaign": 416,
+  "confirmedUniqueNewSendsInCampaign": 85,
+  "remainingInCampaign": 415,
   "dailyTarget": 100,
-  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 3,
-  "dailyRemaining": 97,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 4,
+  "dailyRemaining": 96,
   "countedChannelsInCurrentCampaign": {
     "email": 74,
-    "linkedin": 10
+    "linkedin": 10,
+    "instagram": 1
   },
   "countedChannelsOnDataDate": {
     "email": 0,
-    "linkedin": 3
+    "linkedin": 3,
+    "instagram": 1
   },
-  "countingRule": "Unique new company/group with actual email receipt or independently reopened official LinkedIn outgoing message. Drafts, invites, follows, forms, unknown results, prior group contacts and permanent failures excluded.",
+  "countingRule": "Unique new company/group with actual email receipt or independently reopened official LinkedIn/Instagram outgoing message. Drafts, invites, opened conversations, follows, forms, unknown results, prior group contacts and permanent failures excluded.",
   "deliveryStatus": "Persisted outgoing is not final inbox delivery or human response.",
   "knownFailedDeliveryReceiptsExcluded": 8,
   "priorGroupDuplicateReceiptsExcluded": 1,
   "retainedExclusions": 9,
   "replyRate": null,
-  "replyRateReason": "One actual human pricing/sample request newly verified. Campaign observation remains incomplete; formal reply rate and improvement remain unproven.",
+  "replyRateReason": "An earlier verified human pricing/sample request remains recorded. This update observed a generic acknowledgement without proof of automation or human buying intent. Sent-cohort observation is incomplete; formal reply rate remains null.",
   "humanReplyImprovementProven": false,
   "executionTransport": "Codex in-app browser",
   "emailDispatchStatus": "globally_paused_pending_provider_diagnosis",
@@ -33,11 +35,11 @@
   "copyPolicy": "Real company product/category reference, one primary question, optional15-minutevideo, approved3material links, optout.",
   "dailyTerritoryVerification": "Actual fresh native metadata and bounded agency-table read on2026-10-26; contract dates control stale formula labels.",
   "receiptConsistencyAudit": {
-    "campaignRows": 84,
-    "dailyRows": 3,
+    "campaignRows": 85,
+    "dailyRows": 4,
     "allCampaignReceiptsExactlyOnceInBothStores": true,
-    "permanentRows": 2931,
-    "privateSiteRows": 2774,
+    "permanentRows": 2932,
+    "privateSiteRows": 2775,
     "missingReceipts": 0,
     "duplicateReceipts": 0,
     "retainedExclusions": 9
@@ -45,7 +47,7 @@
   "privateSystemPublication": {
     "status": "succeeded",
     "dataDate": "2026-10-26",
-    "exactSourceCommit": "fb9bf8cfd09fab14e0a68a28cc22047d42015651",
+    "exactSourceCommit": "53b7fe80323ac93c3fd0138fc11085eff8410d13",
     "audienceUnchanged": "owner-private"
   },
   "validation": {
@@ -63,7 +65,7 @@
       "failed": 0
     },
     "build": "passed",
-    "archiveSourceLedgerRows": 2774,
+    "archiveSourceLedgerRows": 2775,
     "archiveSourceSemanticallyEqual": true,
     "productionSuppressionGuardBytesMatchBuiltArchive": true,
     "concurrentOwnerUpdates": "Retained normal fast-forward source changes; unchanged own targeted checks not repeated per customer. No claim of running a complete suite.",
@@ -107,23 +109,37 @@
     "startupRuntimeAcceptance": {
       "authenticated": true,
       "requiredChunkScriptsLoaded": 32,
-      "baselineRowsPreserved": 2774,
+      "baselineRowsPreserved": 2775,
       "customerTableUsable": true,
       "latestOutgoingRecordVisible": true,
       "errorPanels": 0,
       "unattendedExecutionClaimed": false
+    },
+    "currentInstagramTypedChannelRegression": {
+      "passed": 29,
+      "failed": 0,
+      "fullSuite": false,
+      "legacyEmailAndLinkedInKeysPreserved": true
+    },
+    "currentInstagramReceiptCheckpointAndGeneratorRegression": {
+      "passed": 76,
+      "failed": 0,
+      "fullSuite": false,
+      "nativeJpegExtensionMagicAndShaValidated": true,
+      "independentReadOnlyReviewPassed": true
     }
   },
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Private local ledgers and unchanged owner-private system only. This anonymous aggregate contains no company identity, email, contact details or credentials.",
   "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
-  "currentSynchronizationPurpose": "Current execution-date and synchronization-alias reconciliation code repair;84campaign and3daily checkpoint unchanged. Safe code and anonymous statistics only; not scheduled23:50AsiaShanghai synchronization.",
+  "currentSynchronizationPurpose": "Independent Instagram typed-receipt recovery plus one real uniquely confirmed new-company message; owner-private full data and anonymous-only public statistics/safe code. Not the scheduled23:50AsiaShanghai synchronization.",
   "currentChannelRestrictions": {
     "linkedinNewPageConversations": "rate_limited_by_provider; no retry time supplied",
     "email": "paused_pending_provider_diagnosis",
     "facebook": "authenticated_history_scope_unverified",
     "independentResearch": "active",
-    "newSendsDuringThisCodeRepair": 0
+    "newSendsDuringThisCodeRepair": 1,
+    "instagram": "existing_business_account_and_official_conversation_verified; one actual Send independently reopened and permanently recorded"
   },
   "previousDaySyncVerification": {
     "dataDate": "2026-10-25",
@@ -138,8 +154,8 @@
   },
   "latestVerifiedSynchronizationDelta": {
     "previousCampaignCount": 84,
-    "currentCampaignCount": 84,
-    "newVerifiedCompanyReceipts": 0,
+    "currentCampaignCount": 85,
+    "newVerifiedCompanyReceipts": 1,
     "newlyVerifiedHumanReplyCustomers": 0,
     "newlyVerifiedPricingOrSampleRequestCustomers": 0,
     "existingCustomerFollowupSentAndReopened": 0,
@@ -150,20 +166,22 @@
     "dataDate": "2026-10-26",
     "timezone": "Asia/Shanghai",
     "campaignTarget": 500,
-    "campaignConfirmed": 84,
-    "campaignRemaining": 416,
+    "campaignConfirmed": 85,
+    "campaignRemaining": 415,
     "dailyTarget": 100,
-    "dailyConfirmed": 3,
-    "dailyRemaining": 97,
+    "dailyConfirmed": 4,
+    "dailyRemaining": 96,
     "knownDeliveryFailuresExcluded": 8,
     "priorGroupDuplicatesExcluded": 1,
     "campaignChannels": {
       "email": 74,
-      "linkedin": 10
+      "linkedin": 10,
+      "instagram": 1
     },
     "dailyChannels": {
       "email": 0,
-      "linkedin": 3
+      "linkedin": 3,
+      "instagram": 1
     },
     "globalEmailDispatchResumed": false,
     "unattendedHostVerified": false,
@@ -173,13 +191,14 @@
     "observedPricingOrSampleRequestCustomersRecordedOnDataDate": 1
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); no private rows or volatile timestamps",
-  "dataSummaryDigest": "127d548ae06adea3a9f324e750ef484601b2d0941c30a4fafd01050327b3dab7",
-  "verifiedAtUtc": "2026-10-26T12:54:30.666985Z",
+  "dataSummaryDigest": "58394a3bb34e351cb66cafffa97046f12e284d2025ab78b9d6713ae4327b2d3a",
+  "verifiedAtUtc": "2026-10-26T13:40:42.919Z",
   "newlyVerifiedHumanReplyCustomersInThisUpdate": 0,
   "newlyVerifiedPricingOrSampleRequestCustomersInThisUpdate": 0,
-  "publicationChangeType": "checkpoint_current_date_and_sync_alias_code_repair",
-  "unchangedDataSummaryDigestSincePreviousPublication": true,
-  "newUniqueCompaniesInThisPublication": 0,
+  "publicationChangeType": "independent_instagram_verified_send_and_typed_receipt_recovery",
+  "unchangedDataSummaryDigestSincePreviousPublication": false,
+  "newUniqueCompaniesInThisPublication": 1,
   "observedHumanReplyCustomersRecordedOnDataDate": 1,
-  "observedPricingOrSampleRequestCustomersRecordedOnDataDate": 1
+  "observedPricingOrSampleRequestCustomersRecordedOnDataDate": 1,
+  "newlyObservedUnclassifiedAcknowledgements": 1
 }

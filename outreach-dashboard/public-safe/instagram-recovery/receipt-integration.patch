@@ -1,0 +1,683 @@
+diff --git a/docs/plans/2026-10-26-instagram-receipt-recovery.md b/docs/plans/2026-10-26-instagram-receipt-recovery.md
+new file mode 100644
+index 0000000..5c73303
+--- /dev/null
++++ b/docs/plans/2026-10-26-instagram-receipt-recovery.md
+@@ -0,0 +1,15 @@
++# Independent Instagram receipt recovery
++
++**Goal:** Let the already authorized independent Instagram channel preserve the same verified-send, permanent-deduplication and checkpoint rules as the existing LinkedIn channel.
++
++**Context:** The current provider explicitly limits new LinkedIn Page conversations. Independent research remains active. An existing Instagram account and an official business conversation are observable through the authorized in-app browser. Opening a conversation or restoring login is not a send. The current receipt implementation supports email and LinkedIn only, so it cannot safely record an Instagram send as a qualifying receipt.
++
++**Architecture:** Extend only the pure typed social-receipt validator and existing receipt-patch helpers. Keep the established email and LinkedIn key bytes unchanged. Give Instagram its own evidence namespace and canonical provider profile/thread grammar. A real outgoing still requires independently reopened exact sender, recipient, body hash, timestamp and native image evidence; no fabricated email ID or thread URL is permitted. Match the actual screenshot format, extension and SHA without transcoding. Existing LinkedIn evidence keeps its established legacy format compatibility.
++
++1. Add synthetic validator regressions for valid Instagram proof, wrong provider/profile/thread, incomplete verification and unchanged older receipt keys.
++2. Extend the existing same-ID observation merge and typed task generation only for the supported verified social channels. Keep cross-channel company/group and exclusion locks.
++3. Run the targeted validator/checkpoint/patch-generator regressions and independent review. No real message is allowed before the safe receipt path is validated.
++4. Recheck actual company, territorial, account and contact-history gates; perform at most one genuine authorized message, independently reopen it, immediately append both permanent ledgers and reconcile campaign/daily counts.
++5. Publish the exact owner-private source and verify the anonymous-only public GitHub update. Retain the provider limit and all other channel gates; do not claim a daemon or permanent authentication.
++
++No Facebook history/PIN bypass, platform-account switch, paid message, new account registration, permission expansion, guessed contact or test email is part of this repair.
+diff --git a/scripts/campaign-checkpoint-state.mjs b/scripts/campaign-checkpoint-state.mjs
+index 331aec3..28ad1b9 100644
+--- a/scripts/campaign-checkpoint-state.mjs
++++ b/scripts/campaign-checkpoint-state.mjs
+@@ -1,7 +1,7 @@
+ // Pure post-Sent reconciliation. Never sends, retries, writes or asserts delivery.
+ import {isDeepStrictEqual} from 'node:util';
+ import {createHash} from 'node:crypto';
+-import {actualExecutionDay,isKnownCountry,isExcludedNewCustomerReceipt} from './receipt-state.mjs';
++import {actualExecutionDay,isKnownCountry,isExcludedNewCustomerReceipt,isSupportedSocialReceiptChannel} from './receipt-state.mjs';
+ import {verifiedReceiptKey,verifiedSocialCompanyIdentity,mergeVerifiedReceiptObservations} from './channel-receipt-state.mjs';
+ 
+ const receiptId=verifiedReceiptKey;
+@@ -81,7 +81,7 @@ export function buildCampaignCheckpoint({campaign,daily,continuation={},receipt=
+   if(excluded.some(row=>receiptId(row)===id))throw Error('Excluded receipt cannot be restored');
+   if(existing){
+    if(!sameReceipt(existing,receipt))throw Error('Conflicting message ID');
+-   if(receipt.channel==='linkedin'){
++   if(isSupportedSocialReceiptChannel(receipt.channel)){
+     const merged=mergeVerifiedReceiptObservations(existing,receipt);
+     records[records.indexOf(existing)]=merged;byId.set(id,merged);
+    }
+diff --git a/scripts/channel-receipt-state.mjs b/scripts/channel-receipt-state.mjs
+index c55ed1d..d216823 100644
+--- a/scripts/channel-receipt-state.mjs
++++ b/scripts/channel-receipt-state.mjs
+@@ -32,11 +32,42 @@ function linkedinUrl(value,kind) {
+   return `https://www.linkedin.com${path}/`;
+ }
+ 
++const instagramReservedRoutes=new Set(['accounts','account','direct','explore','p','reel','reels',
++  'stories','tv','about','developer','developers','legal','privacy','terms','emails','api','graphql',
++  'oauth','challenge','checkpoint','web','download','directory','nametag','qr','archive','saved',
++  'login','logout','signin','signup','help','support','static','business','press','music','search',
++  'notifications','settings','your_activity','push','create','ads','professional_dashboard']);
++const instagramNonMessageActions=new Set(['chat_opened','conversation_opened','message_window_opened',
++  'profile_opened','message_button_clicked','chat_ready']);
++
++// A deliberately bounded public-profile grammar. Check the literal path before
++// URL normalization so encoded hosts, dot segments and application routes cannot
++// become a different verified identity. Numeric thread IDs remain strings.
++function instagramUrl(value,kind) {
++  if(typeof value!=='string' || value.trim()!==value || /[\s\\\u0000-\u001f\u007f]/u.test(value))return null;
++  const literal=value.match(/^https:\/\/(?:www\.)?instagram\.com(\/[^?#]*)/i);
++  if(!literal)return null;
++  let url;
++  try {url=new URL(value);} catch {return null;}
++  if(url.protocol!=='https:' || url.username || url.password || url.port
++      || !['instagram.com','www.instagram.com'].includes(url.hostname)
++      || url.pathname!==literal[1])return null;
++  const path=url.pathname.replace(/\/$/,'');
++  if(kind==='thread')return /^\/direct\/t\/[1-9]\d*$/.test(path)
++    ?`https://www.instagram.com${path}/`:null;
++  const match=path.match(/^\/([a-zA-Z0-9_](?:[a-zA-Z0-9._]{0,28}[a-zA-Z0-9_])?)$/);
++  if(!match)return null;
++  const handle=match[1].toLowerCase();
++  if(handle.includes('..') || instagramReservedRoutes.has(handle))return null;
++  return `https://www.instagram.com/${handle}/`;
++}
++
+ /**
+  * Pure receipt identity validation, not authorization to contact or proof that
+  * a screenshot's bytes exist. The controller must independently collect and
+  * retain real browser evidence and enforce sender, ICP and company/group gates.
+- * A LinkedIn evidence key is LOCAL; it is never a fabricated provider ID.
++ * Social evidence keys are LOCAL; they are never fabricated provider IDs.
++ * Image-format/file-byte verification remains the controller/helper boundary.
+  */
+ export function verifiedReceiptKey(row) {
+   if(!row || typeof row!=='object' || Array.isArray(row))return fail();
+@@ -47,30 +78,33 @@ export function verifiedReceiptKey(row) {
+         || (row.receiptEvidence?.channel!==undefined && row.receiptEvidence.channel!=='email'))return fail();
+     return emailId;
+   }
+-  if(channel!=='linkedin' || row.status!=='sent_confirmed'
++  if(!['linkedin','instagram'].includes(channel) || row.status!=='sent_confirmed'
+       || [row.mailId,row.messageId,row.providerMessageId].some(value=>/^\d+_\d+:/.test(value || '')))return fail();
+   const evidence=row.receiptEvidence;
+   if(!evidence || typeof evidence!=='object' || Array.isArray(evidence)
+-      || evidence.channel!=='linkedin'
+-      || [row.action,row.type,row.eventType,evidence.action,evidence.type,evidence.status]
+-        .some(value=>nonMessageActions.has(value))
++      || evidence.channel!==channel
++      || [row.action,row.type,row.eventType,evidence.action,evidence.type,evidence.status,
++        ...(channel==='instagram'?[evidence.eventType]:[])]
++        .some(value=>nonMessageActions.has(value) || (channel==='instagram'
++          && typeof value==='string' && instagramNonMessageActions.has(value.trim().toLowerCase())))
+       || evidence.independentlyReopened!==true || evidence.outgoingVisible!==true
+       || evidence.senderVerified!==true || evidence.recipientVerified!==true
+       || !isHash(evidence.screenshotSha256)
+       || typeof evidence.body!=='string' || !evidence.body.trim()
+       || !isHash(evidence.bodySha256)
+       || sha256(evidence.body)!==evidence.bodySha256.toLowerCase())return fail();
+-  const sender=linkedinUrl(evidence.senderProfileUrl,'sender');
+-  const recipient=linkedinUrl(evidence.recipientProfileUrl,'recipient');
+-  const thread=linkedinUrl(evidence.conversationUrl,'thread');
+-  if(!sender || !recipient || !thread)return fail();
++  const channelUrl=channel==='linkedin'?linkedinUrl:instagramUrl;
++  const sender=channelUrl(evidence.senderProfileUrl,'sender');
++  const recipient=channelUrl(evidence.recipientProfileUrl,'recipient');
++  const thread=channelUrl(evidence.conversationUrl,'thread');
++  if(!sender || !recipient || !thread || (channel==='instagram' && sender===recipient))return fail();
+   const targets=[row.target_url,row.officialSocialUrl,row.source]
+-    .map(value=>linkedinUrl(value,'recipient')).filter(Boolean);
++    .map(value=>channelUrl(value,'recipient')).filter(Boolean);
+   if(!targets.includes(recipient))return fail();
+   const sentAt=actualTime(row.sentAtLocal || row.timestamp);
+   if(actualTime(evidence.observedAt)<sentAt)return fail();
+   const canonical=JSON.stringify([thread,sender,recipient,new Date(sentAt).toISOString(),evidence.bodySha256.toLowerCase()]);
+-  const key=`linkedin-evidence-sha256:${sha256(canonical)}`;
++  const key=`${channel}-evidence-sha256:${sha256(canonical)}`;
+   if(row.receiptKey!==undefined && row.receiptKey!==key)return fail();
+   if(row.receiptEvidenceHistory!==undefined) {
+     if(!Array.isArray(row.receiptEvidenceHistory))return fail();
+@@ -88,8 +122,9 @@ export function verifiedReceiptKey(row) {
+ // linkedin.com host. Only an independently verified outgoing social receipt may
+ // introduce this key; an arbitrary profile URL on an email row cannot do so.
+ export function verifiedSocialCompanyIdentity(row) {
+-  if(row?.channel!=='linkedin')return null;
++  if(!['linkedin','instagram'].includes(row?.channel))return null;
+   verifiedReceiptKey(row);
++  if(row.channel==='instagram')return `instagram-business:${instagramUrl(row.receiptEvidence.recipientProfileUrl,'recipient').split('/')[3]}`;
+   return `official-social-company:${linkedinUrl(row.receiptEvidence.recipientProfileUrl,'recipient')}`;
+ }
+ 
+@@ -103,7 +138,7 @@ const stable=value=>Array.isArray(value)?value.map(stable):value&&typeof value==
+ export function mergeVerifiedReceiptObservations(previous,next) {
+   const key=verifiedReceiptKey(previous);
+   if(verifiedReceiptKey(next)!==key)return fail();
+-  if(previous.channel!=='linkedin' || next.channel!=='linkedin')return {...previous,...next};
++  if(!['linkedin','instagram'].includes(previous.channel) || previous.channel!==next.channel)return {...previous,...next};
+   const observations=[],seen=new Set();
+   for(const owner of [previous,next]) {
+     if(owner.receiptEvidenceHistory!==undefined && !Array.isArray(owner.receiptEvidenceHistory))return fail();
+diff --git a/scripts/prepare-confirmed-social-record-patch.mjs b/scripts/prepare-confirmed-social-record-patch.mjs
+index 0ca969d..ef60bf4 100644
+--- a/scripts/prepare-confirmed-social-record-patch.mjs
++++ b/scripts/prepare-confirmed-social-record-patch.mjs
+@@ -4,7 +4,7 @@ import fs from 'node:fs';
+ import path from 'node:path';
+ import vm from 'node:vm';
+ import {createHash} from 'node:crypto';
+-import {buildDailyLedger,receiptBatchDate,isKnownCountry} from './receipt-state.mjs';
++import {buildDailyLedger,receiptBatchDate,isKnownCountry,isSupportedSocialReceiptChannel} from './receipt-state.mjs';
+ import {verifiedReceiptKey,verifiedSocialCompanyIdentity} from './channel-receipt-state.mjs';
+ import {buildCampaignCheckpoint} from './campaign-checkpoint-state.mjs';
+ import {compactDailyLedgerPatch,compactCampaignCheckpointPatch} from './receipt-json-patch.mjs';
+@@ -16,7 +16,8 @@ const root=path.resolve(process.env.OUTREACH_WORKSPACE_ROOT||'E:/系统');
+ const file=name=>path.join(root,name).replaceAll('\\','/');
+ const attemptPath=file(`${slug}-send-attempt-${date}.json`);
+ const beforeAttempt=fs.readFileSync(attemptPath,'utf8'),a=JSON.parse(beforeAttempt);
+-if(a.channel!=='linkedin'||a.transport!=='iab'||a.status!=='sent_confirmed'
++if(!isSupportedSocialReceiptChannel(a.channel)||a.transport!=='iab'||a.status!=='sent_confirmed'
++    ||a.mailId!=null||a.messageId!=null
+     ||a.sendInvocationObserved!==true||a.doNotResend!==true||!(a.icp>70)
+     ||!isKnownCountry(a.country)||!a.campaignId||!a.company
+     ||!Array.isArray(a.sources)||!a.sources.length||!a.sourceEvidence
+@@ -28,11 +29,18 @@ if(!/^\d{4}-\d{2}-\d{2}T\d\d:\d\d:00\+08:00$/.test(a.sentAtLocal||'')
+   throw Error('Actual minute-precision Shanghai sent time required');
+ if(a.body!==a.receiptEvidence?.body||a.conversationUrl!==a.receiptEvidence?.conversationUrl)
+   throw Error('Persisted body or conversation differs from attempt');
+-if(!/^[a-z0-9-]+\.png$/.test(a.confirmationScreenshot||''))
++const screenshotName=a.confirmationScreenshot||'';
++const screenshotNamePattern=a.channel==='instagram'
++  ?/^[a-z0-9-]+\.(?:png|jpe?g)$/
++  :/^[a-z0-9-]+\.png$/;
++if(!screenshotNamePattern.test(screenshotName))
+   throw Error('Local immutable confirmation screenshot required');
+-const screenshotPath=file(a.confirmationScreenshot),screenshot=fs.readFileSync(screenshotPath);
+-const imageHeader=screenshot.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))
+-  ||screenshot.subarray(0,3).equals(Buffer.from([255,216,255]));
++const screenshotPath=file(screenshotName),screenshot=fs.readFileSync(screenshotPath);
++const pngHeader=screenshot.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
++const jpegHeader=screenshot.subarray(0,3).equals(Buffer.from([255,216,255]));
++const imageHeader=a.channel==='instagram'
++  ?(screenshotName.endsWith('.png')?pngHeader:jpegHeader)
++  :pngHeader||jpegHeader;
+ if(screenshot.length<16||!imageHeader||createHash('sha256').update(screenshot).digest('hex')!==a.receiptEvidence?.screenshotSha256)
+   throw Error('Confirmation screenshot bytes/hash mismatch');
+ if(Date.parse(a.receiptEvidence?.observedAt)>Date.now()+60000)
+@@ -42,7 +50,7 @@ const fixedPath=file('confirmed-outreach-2026-10-10.json');
+ const fixedBefore=fs.readFileSync(fixedPath,'utf8'),fixed=JSON.parse(fixedBefore);
+ const batchDate=receiptBatchDate(fixed,date);
+ const r={company:a.company,group:a.group,aliases:a.aliases||[a.domain],country:a.country,
+-  companyDomain:a.domain,channel:'linkedin',platform:'linkedin',status:'sent_confirmed',
++  companyDomain:a.domain,channel:a.channel,platform:a.channel,status:'sent_confirmed',
+   sentAtLocal:a.sentAtLocal,timestampPrecision:a.timestampPrecision,
+   mailId:null,messageId:null,providerMessageId:a.providerMessageId??null,
+   officialSocialUrl:a.officialSocialUrl,target_url:a.recipientProfileUrl,
+@@ -51,10 +59,16 @@ const r={company:a.company,group:a.group,aliases:a.aliases||[a.domain],country:a
+   sourceEvidence:a.sourceEvidence,icp:a.icp,scoreBreakdown:a.scoreBreakdown,
+   intentInputQualification:a.scoreQualification,regionEvidence:a.region,dedupEvidence:a.dedup,
+   confirmationEvidence:a.confirmationEvidence,receiptEvidence:a.receiptEvidence,
++  ...(a.receiptEvidenceHistory!==undefined?{receiptEvidenceHistory:a.receiptEvidenceHistory}:{}),
+   confirmationScreenshot:a.confirmationScreenshot,transport:a.transport,
+-  deliveryStatus:'not independently confirmed; persisted outgoing LinkedIn message only',
++  deliveryStatus:'not independently confirmed; persisted outgoing '+(a.channel==='instagram'?'Instagram':'LinkedIn')+' message only',
+   batchDate,executionDate:date,privateData:true,publicGitHubUploadAllowed:false};
+ r.receiptKey=verifiedReceiptKey(r);
++// Bind the attempt's visible account and target to the same canonical proof,
++// without inventing IDs or duplicating channel-specific URL normalization.
++if(verifiedReceiptKey({...r,receiptEvidence:{...r.receiptEvidence,
++    senderProfileUrl:a.senderProfileUrl,recipientProfileUrl:a.recipientProfileUrl}})!==r.receiptKey)
++  throw Error('Persisted sender or recipient differs from independently observed proof');
+ const permanentPath=path.resolve(process.env.OUTREACH_HISTORY_DIR||'E:/New project/outreach-dashboard',
+   'autonomous-outreach-results.js').replaceAll('\\','/');
+ const permanentBefore=fs.readFileSync(permanentPath,'utf8'),context={};context.window=context;
+@@ -62,11 +76,11 @@ vm.runInNewContext(permanentBefore,context);
+ const existing=context.AUTONOMOUS_OUTREACH_RESULTS;
+ if(!Array.isArray(existing))throw Error('Permanent contact history required');
+ const identity=row=>[...globalThis.OutreachEfficiency.identityKeys(row).filter(key=>!key.startsWith('id:')),
+-  ...(row.channel==='linkedin'&&row.receiptEvidence?.channel==='linkedin'?[verifiedSocialCompanyIdentity(row)]:[])];
++  ...(isSupportedSocialReceiptChannel(row.channel)&&row.receiptEvidence?.channel===row.channel?[verifiedSocialCompanyIdentity(row)]:[])];
+ const candidateKeys=identity(r);
+ if(existing.some(row=>row.receiptKey===r.receiptKey||identity(row).some(key=>candidateKeys.includes(key))))
+   throw Error('Company/group or receipt already in permanent history; do not duplicate');
+-const p={task_id:`verified-social-linkedin-${slug}-${batchDate}`,company:r.company,
++const p={task_id:`verified-social-${r.channel}-${slug}-${batchDate}`,company:r.company,
+   companyDomain:a.domain,groupName:r.group,groupAliases:r.aliases,country:r.country,
+   approval_version:1,status:r.status,agent:'codex-in-app-browser',browserTransportUsed:'iab',
+   timestamp:new Date(r.sentAtLocal).toISOString(),sentAtLocal:r.sentAtLocal,
+@@ -75,7 +89,9 @@ const p={task_id:`verified-social-linkedin-${slug}-${batchDate}`,company:r.compa
+   scoreBreakdown:{...r.scoreBreakdown,icp:r.scoreBreakdown.icp ?? r.scoreBreakdown.fit},
+   intentInputNote:r.intentInputQualification,template:r.template,
+   messageId:null,providerMessageId:r.providerMessageId,receiptKey:r.receiptKey,
+-  receiptEvidence:r.receiptEvidence,confirmationScreenshot:r.confirmationScreenshot,
++  receiptEvidence:r.receiptEvidence,
++  ...(r.receiptEvidenceHistory!==undefined?{receiptEvidenceHistory:r.receiptEvidenceHistory}:{}),
++  confirmationScreenshot:r.confirmationScreenshot,
+   evidence:r.confirmationEvidence+' '+r.sourceEvidence,sources:r.sources,
+   batchDate,executionDate:date,privateData:true,publicGitHubUploadAllowed:false};
+ delete p.scoreBreakdown.fit;
+diff --git a/scripts/receipt-state.mjs b/scripts/receipt-state.mjs
+index 1c101bf..da1d0d7 100644
+--- a/scripts/receipt-state.mjs
++++ b/scripts/receipt-state.mjs
+@@ -1,5 +1,9 @@
+ import '../web/outreach-efficiency.js';
+ import {verifiedReceiptKey,verifiedSocialCompanyIdentity,mergeVerifiedReceiptObservations} from './channel-receipt-state.mjs';
++const socialChannels=['linkedin','instagram'];
++export const isSupportedSocialReceiptChannel=channel=>socialChannels.includes(channel);
++const receiptTaskChannel=task=>task?.startsWith('verified-email-')?'email'
++  :socialChannels.find(channel=>task?.startsWith('verified-social-'+channel+'-'))||null;
+ export const isKnownCountry=value=>typeof value==='string'&&!!value.trim()
+   && !/unknown|unverified|unspecified|global|待核|未知/i.test(value);
+ 
+@@ -52,7 +56,7 @@ export function buildDailyLedger({date,fixedRecords=[],existing=null,receipt=nul
+         throw Error('Conflicting message ID');
+       if(keys.some(key=>owners.has(key)&&owners.get(key)!==id))throw Error('Company/group already counted');
+       keys.forEach(key=>owners.set(key,id));
+-      const merged=row.channel==='linkedin'?mergeVerifiedReceiptObservations(previous,row):{...previous,...row};
++      const merged=isSupportedSocialReceiptChannel(row.channel)?mergeVerifiedReceiptObservations(previous,row):{...previous,...row};
+       records[records.indexOf(previous)]=merged;byId.set(id,merged);
+       continue;
+     }
+@@ -68,20 +72,21 @@ export function buildDailyLedger({date,fixedRecords=[],existing=null,receipt=nul
+ export function missingVerifiedReceipts(source,existing) {
+   if(!Array.isArray(source)||!Array.isArray(existing))throw Error('Receipt arrays required');
+   const ids=new Set(existing.flatMap(row=>{
+-    if(row.channel==='linkedin') {
++    if(isSupportedSocialReceiptChannel(row.channel)) {
+       // Legacy invites/profile URLs and asserted local keys are not evidence.
+       // A strictly typed, complete new social receipt can be indexed even when
+       // the caller has not persisted its optional computed key yet.
+-      if(!row.task_id?.startsWith('verified-social-linkedin-') || row.status!=='sent_confirmed')return [];
++      if(receiptTaskChannel(row.task_id)!==row.channel || row.status!=='sent_confirmed')return [];
+       return [verifiedReceiptKey(row)];
+     }
+     if(row.channel===undefined || row.channel==='email')return [row.receiptKey||row.messageId].filter(Boolean);
+     return [];
+   }));
+   return source.filter(row=>{
+-    if(!['verified-email-','verified-social-linkedin-'].some(prefix=>row.task_id?.startsWith(prefix))||row.status!=='sent_confirmed')return false;
+-    if(row.task_id.startsWith('verified-social-linkedin-')?row.channel!=='linkedin'
+-      :row.channel!==undefined&&row.channel!=='email')throw Error('Receipt task/channel mismatch');
++    const channel=receiptTaskChannel(row.task_id);
++    if(!channel||row.status!=='sent_confirmed')return false;
++    if(channel==='email'?row.channel!==undefined&&row.channel!=='email'
++      :row.channel!==channel)throw Error('Receipt task/channel mismatch');
+     const id=verifiedReceiptKey(row);if(ids.has(id))return false;
+     if(!isKnownCountry(row.country)||!(row.icpScore>70)
+         ||!row.batchDate||!row.executionDate||actualExecutionDay(row)!==row.executionDate)
+diff --git a/tests/channel-receipt-state.test.mjs b/tests/channel-receipt-state.test.mjs
+index 5fc9cbf..745bb0c 100644
+--- a/tests/channel-receipt-state.test.mjs
++++ b/tests/channel-receipt-state.test.mjs
+@@ -21,6 +21,12 @@ const social=(patch={},evidencePatch={})=>({
+     ...evidencePatch},...patch
+ });
+ const reject=(row,label)=>assert.throws(()=>verifiedReceiptKey(row),/Unverified channel receipt/,label);
++const instagram=(patch={},evidencePatch={})=>social({
++  company:'Synthetic Instagram business',channel:'instagram',
++  target_url:'https://www.instagram.com/synthetic_business/',...patch
++},{channel:'instagram',senderProfileUrl:'https://www.instagram.com/synthetic.sender_ig/',
++  recipientProfileUrl:'https://www.instagram.com/synthetic_business/',
++  conversationUrl:'https://www.instagram.com/direct/t/17800000000000001/',...evidencePatch});
+ 
+ test('preserves the existing email ID precedence and optional email channel',()=>{
+   assert.equal(verifiedReceiptKey({mailId:'1_0:synthetic'}),'1_0:synthetic');
+@@ -30,6 +36,13 @@ test('preserves the existing email ID precedence and optional email channel',()=
+   reject({mailId:'5_0:synthetic-draft',messageId:'1_0:second'});
+ });
+ 
++test('the original LinkedIn fixture hash and company identity remain byte-compatible',()=>{
++  assert.equal(verifiedReceiptKey(social()),
++    'linkedin-evidence-sha256:9ae45fea36eb64566d61b0f12ac4b02261c66d501ca910cb7b4b18bc83967c8a');
++  assert.equal(verifiedSocialCompanyIdentity(social()),
++    'official-social-company:https://www.linkedin.com/company/synthetic-fixture-company/');
++});
++
+ test('accepts a fully structured synthetic LinkedIn message without inventing provider IDs',()=>{
+   const row=social(),before=structuredClone(row);
+   assert.match(verifiedReceiptKey(row),/^linkedin-evidence-sha256:[a-f\d]{64}$/);
+@@ -191,3 +204,152 @@ test('first ingestion rejects unverified or cross-message observation history',(
+   }
+   assert.equal(verifiedReceiptKey({...row,receiptEvidenceHistory:[original]}),verifiedReceiptKey(row));
+ });
++
++test('Instagram has an independent typed local key without inventing provider IDs',()=>{
++  const row=instagram(),before=structuredClone(row);
++  const key=verifiedReceiptKey(row);
++  assert.match(key,/^instagram-evidence-sha256:[a-f\d]{64}$/);
++  assert.deepEqual(row,before);
++  assert.equal(row.providerMessageId,null);
++  const absent=instagram();delete absent.providerMessageId;
++  assert.equal(verifiedReceiptKey(absent),key);
++  assert.equal(Object.hasOwn(absent,'providerMessageId'),false);
++  assert.notEqual(verifiedReceiptKey(instagram({}, {
++    conversationUrl:'https://www.instagram.com/direct/t/17800000000000002/'})),key,
++  'large numeric thread IDs stay exact strings, never rounded JS numbers');
++});
++
++test('Instagram canonicalizes public handle identity without merging different businesses',()=>{
++  const row=instagram(),key=verifiedReceiptKey(row);
++  const tracked=instagram({company:'Synthetic alias',sentAtLocal:'2026-10-25T05:00:00Z',
++    target_url:'https://instagram.com/SYNTHETIC_BUSINESS?igsh=fixture'}, {
++    senderProfileUrl:'https://instagram.com/SYNTHETIC.SENDER_IG?igsh=fixture',
++    recipientProfileUrl:'https://instagram.com/SYNTHETIC_BUSINESS#fixture',
++    conversationUrl:'https://instagram.com/direct/t/17800000000000001?igsh=fixture'});
++  assert.equal(verifiedReceiptKey(tracked),key);
++  assert.equal(verifiedSocialCompanyIdentity(row),'instagram-business:synthetic_business');
++  assert.equal(verifiedSocialCompanyIdentity(tracked),verifiedSocialCompanyIdentity(row));
++  const other=instagram({target_url:'https://instagram.com/another_business/'}, {
++    recipientProfileUrl:'https://instagram.com/another_business/'});
++  assert.notEqual(verifiedSocialCompanyIdentity(other),verifiedSocialCompanyIdentity(row));
++  assert.notEqual(verifiedReceiptKey(other),key);
++  assert.equal(verifiedSocialCompanyIdentity({channel:'email',officialSocialUrl:row.target_url}),null);
++});
++
++test('Instagram rejects unsafe hosts, schemes, credentials, ports and nonliteral paths',()=>{
++  for(const senderProfileUrl of [
++    'https://instagram.com.evil.invalid/synthetic_sender/',
++    'https://instagram.com@evil.invalid/synthetic_sender/',
++    'https://evil.invalid@instagram.com/synthetic_sender/',
++    'http://www.instagram.com/synthetic_sender/',
++    'https://www.instagram.com:443/synthetic_sender/',
++    'https://www.instagram.com:8443/synthetic_sender/',
++    'https://www.instagram.com./synthetic_sender/',
++    'https://m.instagram.com/synthetic_sender/',
++    'https://%69nstagram.com/synthetic_sender/',
++    'https://www.instagram.com\\@evil.invalid/synthetic_sender/',
++    'https://www.instagram.com/p/../synthetic_sender/',
++    'https://www.instagram.com/%2e%2e/synthetic_sender/',
++    ' https://www.instagram.com/synthetic_sender/',
++    'https://www.instagram.com/synthetic_sender/\u0000'
++  ])reject(instagram({}, {senderProfileUrl}),senderProfileUrl);
++});
++
++test('Instagram accepts only supported single handles and never reserved application routes',()=>{
++  for(const handle of ['accounts','direct','explore','p','reel','reels','stories','tv','about',
++    'api','graphql','challenge','login','legal','directory','web','developer','oauth','accounts/login',
++    '', '.', '..', '.synthetic','synthetic.','synthetic..business','synthetic-business',
++    'synthetic%2fbusiness','synthetic%5cbusiness','synthetic business','a'.repeat(31),'synthetic\u00e9']) {
++    reject(instagram({}, {senderProfileUrl:`https://www.instagram.com/${handle}/`}),handle);
++    reject(instagram({}, {recipientProfileUrl:`https://www.instagram.com/${handle}/`}),handle);
++  }
++  assert.match(verifiedReceiptKey(instagram({}, {senderProfileUrl:'https://instagram.com/_synthetic.1/'})),/^instagram-evidence-sha256:/);
++});
++
++test('Instagram requires the exact numeric direct thread, never posts, reels, profiles or inbox',()=>{
++  for(const conversationUrl of [
++    'https://www.instagram.com/synthetic_business/',
++    'https://www.instagram.com/p/17800000000000001/',
++    'https://www.instagram.com/reel/17800000000000001/',
++    'https://www.instagram.com/direct/',
++    'https://www.instagram.com/direct/inbox/',
++    'https://www.instagram.com/direct/?thread=17800000000000001',
++    'https://www.instagram.com/direct/t/',
++    'https://www.instagram.com/direct/t/abc/',
++    'https://www.instagram.com/direct/t/17800000000000001/another/',
++    'https://www.instagram.com/direct/t/%31/',
++    'https://www.instagram.com/direct/t/0/',
++    'https://www.instagram.com/direct/t/0001/',
++    'https://www.instagram.com/direct/x/../t/17800000000000001/'
++  ])reject(instagram({}, {conversationUrl}),conversationUrl);
++});
++
++test('Instagram retains every independently observed sender, recipient and reopening gate',()=>{
++  for(const field of ['independentlyReopened','outgoingVisible','senderVerified','recipientVerified'])
++    for(const value of [undefined,false,'true',1])reject(instagram({}, {[field]:value}),field);
++  for(const field of ['senderProfileUrl','recipientProfileUrl','conversationUrl'])
++    reject(instagram({}, {[field]:undefined}),field);
++  assert.throws(()=>verifiedSocialCompanyIdentity(instagram({}, {outgoingVisible:false})));
++});
++
++test('Instagram requires exact text, screenshot SHA, valid time and outgoing message state',()=>{
++  for(const body of [undefined,null,'','   ','Changed synthetic body'])reject(instagram({}, {body}));
++  for(const field of ['bodySha256','screenshotSha256'])
++    for(const value of [undefined,null,'','a'.repeat(63),'g'.repeat(64)])reject(instagram({}, {[field]:value}),field);
++  for(const observedAt of [undefined,null,'invalid','2026-10-25T12:59:59+08:00'])reject(instagram({}, {observedAt}));
++  reject(instagram({sentAtLocal:undefined}));
++  for(const status of [undefined,'draft','unknown','prepared_not_sent','send_unconfirmed'])reject(instagram({status}));
++  for(const action of ['follow','invitation_sent','draft','website_form','submitted_confirmed']) {
++    reject(instagram({action}));reject(instagram({}, {action}));
++  }
++  for(const field of ['mailId','messageId','providerMessageId'])reject(instagram({[field]:'1_0:synthetic-email'}),field);
++});
++
++test('Instagram opening a chat, profile or Message button is never a sent receipt',()=>{
++  for(const action of ['chat_opened','conversation_opened','message_window_opened','profile_opened',
++    'message_button_clicked','chat_ready','CHAT_OPENED']) {
++    for(const field of ['action','type','eventType']) {
++      reject(instagram({[field]:action}));reject(instagram({}, {[field]:action}));
++    }
++    reject(instagram({}, {status:action}));
++  }
++});
++
++test('Instagram rejects cross-channel URLs, evidence and receipt keys',()=>{
++  reject(instagram({}, {channel:'linkedin'}));
++  reject(social({}, {channel:'instagram'}));
++  reject(instagram({}, {senderProfileUrl:social().receiptEvidence.senderProfileUrl}));
++  reject(instagram({}, {recipientProfileUrl:social().receiptEvidence.recipientProfileUrl}));
++  reject(instagram({}, {conversationUrl:social().receiptEvidence.conversationUrl}));
++  reject(social({}, {conversationUrl:instagram().receiptEvidence.conversationUrl}));
++  reject({channel:'email',mailId:'1_0:synthetic',receiptEvidence:{channel:'instagram'}});
++  reject(instagram({receiptKey:verifiedReceiptKey(social())}));
++  reject(social({receiptKey:'instagram-evidence-sha256:'+hash('synthetic')}));
++});
++
++test('Instagram binds the exact business target and cannot count a self message',()=>{
++  reject(instagram({target_url:'https://instagram.com/another_business/'}));
++  reject(instagram({target_url:undefined,source:'https://synthetic-company.invalid/'}));
++  reject(instagram({}, {senderProfileUrl:'https://instagram.com/synthetic_business/'}));
++  assert.equal(verifiedReceiptKey(instagram({target_url:undefined,
++    officialSocialUrl:'https://instagram.com/synthetic_business?igsh=fixture'})),verifiedReceiptKey(instagram()));
++  assert.equal(verifiedReceiptKey(instagram({target_url:undefined,
++    source:'https://instagram.com/synthetic_business/'})),verifiedReceiptKey(instagram()));
++});
++
++test('Instagram observations merge proof without changing the sent message identity',()=>{
++  const first=instagram(),key=verifiedReceiptKey(first),before=structuredClone(first);
++  const later=instagram({}, {observedAt:'2026-10-25T13:02:00+08:00',screenshotSha256:hash('later synthetic Instagram screenshot')});
++  const merged=mergeVerifiedReceiptObservations(first,later);
++  assert.equal(verifiedReceiptKey(merged),key);
++  assert.equal(merged.receiptEvidence.screenshotSha256,later.receiptEvidence.screenshotSha256);
++  assert.deepEqual(merged.receiptEvidenceHistory.map(e=>e.screenshotSha256),
++    [first.receiptEvidence.screenshotSha256,later.receiptEvidence.screenshotSha256]);
++  assert.deepEqual(mergeVerifiedReceiptObservations(merged,first),merged);
++  assert.deepEqual(mergeVerifiedReceiptObservations(merged,later),merged);
++  assert.deepEqual(first,before);
++  reject({...first,receiptEvidenceHistory:[{...first.receiptEvidence,
++    conversationUrl:'https://www.instagram.com/direct/t/17800000000000002/'}]});
++  reject({...first,receiptEvidenceHistory:[{...first.receiptEvidence,body:'Altered',bodySha256:hash('Altered')}]});
++  assert.throws(()=>mergeVerifiedReceiptObservations(first,social()));
++});
+diff --git a/tests/cross-channel-campaign-receipt.test.mjs b/tests/cross-channel-campaign-receipt.test.mjs
+index 4dadf93..d8e77c9 100644
+--- a/tests/cross-channel-campaign-receipt.test.mjs
++++ b/tests/cross-channel-campaign-receipt.test.mjs
+@@ -16,6 +16,13 @@ function social(extra={}){
+    body,bodySha256:hash(body),independentlyReopened:true,outgoingVisible:true,senderVerified:true,recipientVerified:true,
+    screenshotSha256:hash('synthetic screenshot bytes'),observedAt:date+'T12:31:00+08:00'},...extra};
+ }
++function instagram(extra={}){
++ const row=social(),recipient='https://www.instagram.com/synthetic_fixture_company/';
++ return {...row,channel:'instagram',officialSocialUrl:recipient,
++  receiptEvidence:{...row.receiptEvidence,channel:'instagram',
++   senderProfileUrl:'https://www.instagram.com/synthetic_fixture_sender/',recipientProfileUrl:recipient,
++   conversationUrl:'https://www.instagram.com/direct/t/900000000000000000001/'},...extra};
++}
+ const email=(extra={})=>({company:'Fixture Email Company',country:'Singapore',icp:70.4,channel:'email',status:'sent_confirmed',
+  mailId:'1_0:synthetic-email',sentAtLocal:date+'T11:00:00+08:00',executionDate:date,...extra});
+ const campaign=()=>({id:'fixture-500',target:500,confirmedCount:0,remaining:500,startedAt:date+'T00:00:00+08:00',records:[],excludedReceipts:[]});
+@@ -107,3 +114,50 @@ test('daily and campaign ingestion reject poisoned retained social evidence',()=
+  const daily=buildDailyLedger({date,receipt:original});
+  assert.throws(()=>reconcile(campaign(),daily,poisoned));
+ });
++
++test('a verified Instagram receipt counts once without an email ID and preserves checkpoint safety metadata',()=>{
++ const row=instagram(),daily=buildDailyLedger({date,receipt:row}),before=structuredClone(row),out=reconcile(campaign(),daily,row);
++ assert.equal(daily.confirmedCount,1);assert.equal(out.campaign.confirmedCount,1);assert.equal(out.continuation.confirmedToday,1);
++ assert.match(out.continuation.lastReceiptId,/^instagram-evidence-sha256:/);assert.equal(out.campaign.records[0].mailId,undefined);
++ assert.equal(out.campaign.records[0].providerMessageId,undefined);assert.equal(out.continuation.synchronization.verified,false);
++ assert.equal(out.campaign.execution.latestAudit.actualExecutionDate,date);assert.deepEqual(row,before);
++ assert.equal(reconcile(out.campaign,daily,row).campaign.confirmedCount,1);
++});
++test('Instagram re-observations merge screenshots into daily and campaign history without duplicate counting',()=>{
++ const first=instagram(),daily=buildDailyLedger({date,receipt:first}),initial=reconcile(campaign(),daily,first);
++ const later=instagram({receiptEvidence:{...first.receiptEvidence,observedAt:date+'T12:32:00+08:00',screenshotSha256:hash('second synthetic Instagram screenshot')}});
++ const nextDaily=buildDailyLedger({date,existing:daily,receipt:later}),next=reconcile(initial.campaign,nextDaily,later);
++ assert.equal(nextDaily.confirmedCount,1);assert.equal(next.campaign.confirmedCount,1);
++ assert.equal(nextDaily.records[0].receiptEvidenceHistory.length,2);assert.equal(next.campaign.records[0].receiptEvidenceHistory.length,2);
++ assert.equal(next.continuation.lastReceiptId,verifiedReceiptKey(first));assert.equal(initial.campaign.records[0].receiptEvidenceHistory,undefined);
++ const repeated=reconcile(next.campaign,nextDaily,later);assert.deepEqual(repeated.campaign.records[0].receiptEvidenceHistory,next.campaign.records[0].receiptEvidenceHistory);
++});
++test('Instagram cannot recount an email or LinkedIn company group or an already-used Instagram profile',()=>{
++ const row=instagram();
++ for(const first of [email({group:'Fixture Group'}),social()]){
++  const daily=buildDailyLedger({date,receipt:first}),prior=reconcile(campaign(),daily,first).campaign;
++  assert.throws(()=>buildDailyLedger({date,existing:daily,receipt:row}),/Company\/group/);
++  assert.throws(()=>reconcile(prior,buildDailyLedger({date,receipt:row}),row),/Company\/group/);
++ }
++ const daily=buildDailyLedger({date,receipt:row}),prior=reconcile(campaign(),daily,row).campaign;
++ const renamed=instagram({company:'Another synthetic Instagram label',group:undefined,aliases:[],sentAtLocal:date+'T12:30:10+08:00'});
++ assert.throws(()=>buildDailyLedger({date,existing:daily,receipt:renamed}),/Company\/group/);
++ assert.throws(()=>reconcile(prior,buildDailyLedger({date,receipt:renamed}),renamed),/Company\/group/);
++ const excluded=campaign();excluded.excludedReceipts=[email({group:'Fixture Group',countAsNewCustomer:false,deliveryStatus:'hard_bounced'})];
++ assert.throws(()=>reconcile(excluded,buildDailyLedger({date,receipt:row}),row),/Company\/group/);
++});
++test('typed Instagram private-source synchronization is idempotent and enforces exact task/channel pairing',()=>{
++ const row=instagram(),source={...row,task_id:'verified-social-instagram-synthetic-'+date,icpScore:row.icp,timestamp:row.sentAtLocal};
++ assert.deepEqual(missingVerifiedReceipts([source],[]),[source]);assert.deepEqual(missingVerifiedReceipts([source],[source]),[]);
++ assert.deepEqual(missingVerifiedReceipts([source],[{channel:'instagram',status:'sent_confirmed',receiptKey:verifiedReceiptKey(source)}]),[source]);
++ for(const wrong of [{...source,channel:'linkedin'},{...source,channel:'email',mailId:'1_0:synthetic'},
++  {...source,task_id:'verified-social-linkedin-synthetic-'+date}, {...source,task_id:'verified-email-synthetic-'+date}])
++  assert.throws(()=>missingVerifiedReceipts([wrong],[]),/task\/channel mismatch/);
++ assert.throws(()=>missingVerifiedReceipts([source],[{...source,receiptEvidence:{...source.receiptEvidence,outgoingVisible:false}}]));
++});
++test('Instagram unknown outcomes, threshold failures and poisoned histories remain uncountable',()=>{
++ const row=instagram(),badHistory={...row,receiptEvidenceHistory:[{...row.receiptEvidence,conversationUrl:'https://www.instagram.com/direct/t/900000000000000000002/'}]};
++ for(const bad of [instagram({status:'send_unconfirmed'}),instagram({status:'draft'}),instagram({icp:70}),instagram({countAsNewCustomer:false}),badHistory])
++  assert.throws(()=>buildDailyLedger({date,receipt:bad}));
++ assert.throws(()=>reconcile(campaign(),buildDailyLedger({date,receipt:row}),badHistory));
++});
+diff --git a/tests/social-receipt-patch-generator.test.mjs b/tests/social-receipt-patch-generator.test.mjs
+index 777eb6e..75a9f12 100644
+--- a/tests/social-receipt-patch-generator.test.mjs
++++ b/tests/social-receipt-patch-generator.test.mjs
+@@ -19,9 +19,12 @@ const BODY='Synthetic customer-development message. This was never sent.';
+ const hash=value=>createHash('sha256').update(value).digest('hex');
+ // A complete, valid 1 x 1 PNG, not merely text bearing a .png extension.
+ const PNG_BYTES=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1ioAAAAASUVORK5CYII=','base64');
++// Complete 1 x 1 synthetic JPEG, independently decoded during development;
++// no real screenshot or provider/customer identity appears in this fixture.
++const JPEG_BYTES=Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAAf/2Q==','base64');
+ const key=(dir,name)=>path.join(dir,name).replaceAll('\\','/');
+ 
+-function fixture({fixedCount=100,permanentRows=[{company:'Unrelated synthetic historical customer',
++function fixture({fixedCount=100,channel='linkedin',permanentRows=[{company:'Unrelated synthetic historical customer',
+  companyDomain:'unrelated-history.test',groupName:'Unrelated synthetic historical group',messageId:'1_0:synthetic-prior'}]}={}){
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'outreach-social-receipt-test-'));
+  const put=(name,value)=>fs.writeFileSync(path.join(dir,name),Buffer.isBuffer(value)||typeof value==='string'?
+@@ -31,23 +34,21 @@ function fixture({fixedCount=100,permanentRows=[{company:'Unrelated synthetic hi
+   companyDomain:`synthetic-fixed-${i}.test`,country:'Singapore',icp:70.4,status:'sent_confirmed',
+   mailId:`1_0:synthetic-fixed-${i}`,sentAtLocal:`${FIXED_DATE}T09:00:00+08:00`,
+   executionDate:FIXED_DATE,batchDate:FIXED_DATE}));
++ const urls=channel==='instagram'?{sender:'https://www.instagram.com/synthetic_fixture_sender/',recipient:'https://www.instagram.com/synthetic_fixture_company/',thread:'https://www.instagram.com/direct/t/900000000000000000001/'}
++  :{sender:'https://www.linkedin.com/in/synthetic-fixture-sender/',recipient:'https://www.linkedin.com/company/synthetic-social-candidate/',thread:'https://www.linkedin.com/messaging/thread/SYNTHETIC_SOCIAL_THREAD/'};
+  const attempt={company:'Synthetic social candidate',group:'Synthetic social group',domain:'synthetic-social.test',
+-  aliases:['Synthetic social candidate','synthetic-social.test'],country:'Singapore',channel:'linkedin',
++  aliases:['Synthetic social candidate','synthetic-social.test'],country:'Singapore',channel,
+   status:'sent_confirmed',transport:'iab',sendInvocationObserved:true,doNotResend:true,icp:70.4,
+   campaignId:CAMPAIGN_ID,sentAtLocal:`${DATE}T12:30:00+08:00`,timestampPrecision:'minute',
+-  body:BODY,conversationUrl:'https://www.linkedin.com/messaging/thread/SYNTHETIC_SOCIAL_THREAD/',
+-  senderProfileUrl:'https://www.linkedin.com/in/synthetic-fixture-sender/',
+-  recipientProfileUrl:'https://www.linkedin.com/company/synthetic-social-candidate/',
+-  officialSocialUrl:'https://www.linkedin.com/company/synthetic-social-candidate/',
++  body:BODY,conversationUrl:urls.thread,senderProfileUrl:urls.sender,
++  recipientProfileUrl:urls.recipient,officialSocialUrl:urls.recipient,
+   sources:['https://synthetic-social.test/contact'],sourceEvidence:'Synthetic source facts; not a live verification.',
+   region:{country:'Singapore',open:true,source:'Synthetic regional evidence.'},
+   dedup:{companyChecked:true,groupChecked:true,source:'Synthetic permanent-history snapshot.'},
+   confirmationEvidence:'Synthetic independently reopened outgoing LinkedIn message fixture, not a send.',
+   confirmationScreenshot:PNG,scoreBreakdown:{market:21.4,fit:25,identity:12,intent:12,trend:0,history:0},
+-  receiptEvidence:{channel:'linkedin',body:BODY,bodySha256:hash(BODY),screenshotSha256:hash(PNG_BYTES),
+-   senderProfileUrl:'https://www.linkedin.com/in/synthetic-fixture-sender/',
+-   recipientProfileUrl:'https://www.linkedin.com/company/synthetic-social-candidate/',
+-   conversationUrl:'https://www.linkedin.com/messaging/thread/SYNTHETIC_SOCIAL_THREAD/',
++  receiptEvidence:{channel,body:BODY,bodySha256:hash(BODY),screenshotSha256:hash(PNG_BYTES),
++   senderProfileUrl:urls.sender,recipientProfileUrl:urls.recipient,conversationUrl:urls.thread,
+    independentlyReopened:true,outgoingVisible:true,senderVerified:true,recipientVerified:true,
+    observedAt:`${DATE}T12:31:00+08:00`}};
+  put(`confirmed-outreach-${FIXED_DATE}.json`,{date:FIXED_DATE,target:100,confirmedCount:fixedCount,records});
+@@ -110,8 +111,8 @@ function generated(f){
+   'every proposed target must remain in the synthetic fixture');
+  return{proposal,files:applyProposal(proposal,before),before};
+ }
+-function rejects(mutator,pattern=/Verified authorized social attempt|Unverified channel receipt|Actual minute-precision|differs|screenshot|ENOENT|Company\/group|campaign|Campaign|Unverified receipt|Invalid/i){
+- const f=fixture();try{
++function rejects(mutator,pattern=/Verified authorized social attempt|Unverified channel receipt|Actual minute-precision|differs|screenshot|ENOENT|Company\/group|campaign|Campaign|Unverified receipt|Invalid/i,options={}){
++ const f=fixture(options);try{
+   mutator(f);const before=f.snapshot();
+   assert.throws(f.run,error=>{assert.equal(String(error.stdout),'','rejected proposals must not escape to stdout');
+    assert.match(String(error.stderr),pattern);return true;});
+@@ -254,3 +255,66 @@ test('an open fixed batch retains cross-date receipt history while actual-day da
+   assert.deepEqual(fixed.records.at(-1),daily.records[0]);
+  }finally{f.cleanup();}
+ });
++
++test('a fully verified synthetic Instagram PNG receipt produces a channel-correct read-only permanent and campaign proposal',()=>{
++ const f=fixture({channel:'instagram'});try{
++  const {files}=generated(f),read=name=>JSON.parse(files.get(key(f.dir,name))),daily=read(`confirmed-outreach-${DATE}.json`),receipt=daily.records[0];
++  assert.equal(receipt.channel,'instagram');assert.equal(receipt.platform,'instagram');assert.match(receipt.receiptKey,/^instagram-evidence-sha256:/);
++  assert.equal(receipt.mailId,null);assert.equal(receipt.messageId,null);assert.equal(receipt.providerMessageId,null);
++  assert.equal(receipt.receiptEvidence.body,BODY);assert.equal(receipt.receiptEvidence.screenshotSha256,hash(PNG_BYTES));assert.match(receipt.deliveryStatus,/Instagram/);
++  assert.equal(read(`campaign-500-${DATE}.json`).confirmedCount,1);assert.equal(read(`campaign-500-continuation-${DATE}.json`).confirmedToday,1);
++  const context={};context.window=context;vm.runInNewContext(files.get(key(f.dir,'autonomous-outreach-results.js')),context);
++  const permanent=context.AUTONOMOUS_OUTREACH_RESULTS.at(-1);assert.equal(permanent.task_id,`verified-social-instagram-fixture-${DATE}`);
++  assert.equal(permanent.channel,'instagram');assert.equal(permanent.messageId,null);assert.equal(permanent.receiptKey,receipt.receiptKey);
++ }finally{f.cleanup();}
++});
++test('Instagram proposals reject unobserved sends, invalid proof and screenshot bytes without writes',()=>{
++ for(const mutate of [f=>f.update({status:'send_unconfirmed'}),f=>f.update({sendInvocationObserved:false}),
++  f=>f.update({doNotResend:false}),f=>f.evidence({independentlyReopened:false}),f=>f.evidence({outgoingVisible:false}),
++  f=>f.evidence({bodySha256:hash('not the synthetic body')}),f=>f.put(PNG,Buffer.concat([PNG_BYTES,Buffer.from('changed')]))])
++  rejects(mutate,undefined,{channel:'instagram'});
++});
++test('Instagram attempts must bind the top-level sender and recipient to the independently observed proof',()=>{
++ for(const changes of [{senderProfileUrl:'https://www.instagram.com/synthetic_wrong_sender/'},
++  {recipientProfileUrl:'https://www.instagram.com/synthetic_wrong_recipient/'},
++  {mailId:'1_0:synthetic-email'},{messageId:'5_0:synthetic-draft'}])
++  rejects(f=>f.update(changes),/Unverified channel receipt|differs|Verified authorized social attempt/,{channel:'instagram'});
++});
++test('Instagram accepts actual JPEG bytes with jpg or jpeg names while LinkedIn retains legacy png-name JPEG compatibility',()=>{
++ const old=fixture();try{old.put(PNG,JPEG_BYTES);old.evidence({screenshotSha256:hash(JPEG_BYTES)});generated(old);}finally{old.cleanup();}
++ for(const extension of ['jpg','jpeg']){const f=fixture({channel:'instagram'});try{
++  const filename='synthetic-social-confirmation.'+extension;f.put(filename,JPEG_BYTES);f.update({confirmationScreenshot:filename});f.evidence({screenshotSha256:hash(JPEG_BYTES)});
++  const {files}=generated(f),daily=JSON.parse(files.get(key(f.dir,`confirmed-outreach-${DATE}.json`)));
++  assert.equal(daily.records[0].confirmationScreenshot,filename);assert.equal(daily.records[0].receiptEvidence.screenshotSha256,hash(JPEG_BYTES));
++ }finally{f.cleanup();}}
++});
++test('Instagram rejects screenshot extension and magic mismatches, short bytes, non-images and escaping paths',()=>{
++ for(const [filename,bytes] of [['synthetic-wrong.png',JPEG_BYTES],['synthetic-wrong.jpg',PNG_BYTES],
++  ['synthetic-wrong.jpeg',PNG_BYTES],['synthetic-short.jpg',Buffer.from([255,216,255])],
++  ['synthetic-text.jpg',Buffer.from('Synthetic non-image byte fixture only.')]])
++  rejects(f=>{f.put(filename,bytes);f.update({confirmationScreenshot:filename});f.evidence({screenshotSha256:hash(bytes)});},/PNG|JPEG|screenshot|image/i,{channel:'instagram'});
++ for(const confirmationScreenshot of ['../outside.jpg','C:/outside.jpeg','subdir/picture.jpg','synthetic.JPG'])
++  rejects(f=>f.update({confirmationScreenshot}),/Local immutable confirmation screenshot required/,{channel:'instagram'});
++});
++test('Instagram company/domain/group and verified official-profile aliases remain permanent suppression boundaries',()=>{
++ for(const prior of [{company:'Synthetic social candidate'}, {company:'Other synthetic company',companyDomain:'synthetic-social.test'},
++  {company:'Other synthetic subsidiary',groupName:'Synthetic social group'}])
++  rejects(f=>f.put('autonomous-outreach-results.js','window.AUTONOMOUS_OUTREACH_RESULTS = [\n'+JSON.stringify(prior)+'\n];'),/Company\/group/,{channel:'instagram'});
++ const f=fixture({channel:'instagram'});try{
++  const prior=f.get(ATTEMPT);const social={...prior,company:'Other synthetic label',group:undefined,aliases:[],domain:'other-synthetic.test',companyDomain:'other-synthetic.test',officialSocialUrl:prior.recipientProfileUrl,target_url:prior.recipientProfileUrl,sentAtLocal:`${DATE}T12:20:00+08:00`,receiptEvidence:{...prior.receiptEvidence,observedAt:`${DATE}T12:21:00+08:00`}};
++  f.put('autonomous-outreach-results.js','window.AUTONOMOUS_OUTREACH_RESULTS = [\n'+JSON.stringify(social)+'\n];');
++  const before=f.snapshot();assert.throws(f.run,error=>{assert.match(String(error.stderr),/Company\/group or receipt already in permanent history/);return true;});f.unchanged(before);
++ }finally{f.cleanup();}
++});
++test('Instagram proposal retains valid prior observations and rejects a poisoned observation history',()=>{
++ const f=fixture({channel:'instagram'});try{
++  const original=f.get(ATTEMPT).receiptEvidence,later={...original,observedAt:`${DATE}T12:32:00+08:00`};
++  f.update({receiptEvidence:later,receiptEvidenceHistory:[original,later]});
++  const {files}=generated(f),read=name=>JSON.parse(files.get(key(f.dir,name)));
++  assert.equal(read(`confirmed-outreach-${DATE}.json`).records[0].receiptEvidenceHistory.length,2);
++  assert.equal(read(`campaign-500-${DATE}.json`).records[0].receiptEvidenceHistory.length,2);
++  const context={};context.window=context;vm.runInNewContext(files.get(key(f.dir,'autonomous-outreach-results.js')),context);
++  assert.equal(context.AUTONOMOUS_OUTREACH_RESULTS.at(-1).receiptEvidenceHistory.length,2);
++ }finally{f.cleanup();}
++ rejects(f=>{const original=f.get(ATTEMPT).receiptEvidence;f.update({receiptEvidenceHistory:[{...original,senderProfileUrl:'https://www.instagram.com/synthetic_wrong_sender/'}]});},/Unverified channel receipt/,{channel:'instagram'});
++});
