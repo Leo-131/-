@@ -1,6 +1,9 @@
 (async function(){
   const messages={request_timeout:'页面数据读取超时，请检查网络后重试。',state_unavailable:'在线存储未就绪，请稍后重试。',progress_unavailable:'新进度暂不可用，请稍后重试。',script_timeout:'必需页面资源加载超时，请检查网络后重试。',script_load_failed:'必需页面资源加载失败，请稍后重试。'};
   const bootError=code=>Object.assign(new Error(messages[code]),{code});
+  // Required data assets keep an explicit, finite budget; they never become optional.
+  const largeRequiredData=new Set(['autonomous-outreach-results.js','outreach-intelligence-latest.js']);
+  let failedResource=null;
   async function readJson(url,deadlineMs=10000){
     const controller=new AbortController();let timer;
     // Bound fetch AND body parsing. A deadline does not prove cancellation;
@@ -39,7 +42,9 @@
       if(overrides.has(file)&&globals[file]){window[globals[file]]=overrides.get(file);continue;}
       await new Promise((resolve,reject)=>{
         const script=document.createElement('script');
-        const optional=original.hasAttribute('data-optional');let settled=false,timer;
+        const largeRequired=largeRequiredData.has(file);
+        const optional=original.hasAttribute('data-optional')&&!largeRequired;
+        const deadlineMs=largeRequired?30000:optional?3000:10000;let settled=false,timer;
         const finish=code=>{
           if(settled)return;settled=true;clearTimeout(timer);script.onload=null;script.onerror=null;
           if(code){
@@ -48,13 +53,13 @@
             if(optional){
               (window.__outreachBootWarnings??=[]).push({asset:file,code});
               console.warn('Optional workspace resource unavailable:',file,code);
-            }else{reject(bootError(code));return;}
+            }else{failedResource={asset:file,deadlineMs};reject(bootError(code));return;}
           }
           resolve();
         };
         if(original.src){
           script.src=original.src;script.onload=()=>finish();script.onerror=()=>finish('script_load_failed');
-          timer=setTimeout(()=>finish('script_timeout'),optional?3000:10000);
+          timer=setTimeout(()=>finish('script_timeout'),deadlineMs);
         }else script.textContent=original.textContent;
         try{original.after(script);if(!original.src)finish();}catch{finish('script_load_failed');}
       });
@@ -65,6 +70,12 @@
     const panel=document.createElement('main');panel.className='hosted-error';
     const title=document.createElement('h1');title.textContent='客户开发中心暂未加载';
     const message=document.createElement('p');message.textContent=Object.hasOwn(messages,error?.code)?messages[error.code]:'页面初始化失败，请检查网络后重试。';
+    // Only local asset paths and budgets enter diagnostics, never query strings or transport errors.
+    if(failedResource){
+      window.__outreachBootFailure={...failedResource};
+      const detail=document.createElement('small');detail.textContent='资源：'+failedResource.asset+'；等待上限：'+failedResource.deadlineMs/1000+'秒。';
+      panel.append(detail);
+    }
     const retry=document.createElement('button');retry.textContent='重新加载';retry.onclick=()=>location.reload();
     panel.append(title,message,retry);document.body.append(panel);
   }

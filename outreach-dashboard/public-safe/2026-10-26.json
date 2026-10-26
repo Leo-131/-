@@ -45,7 +45,7 @@
   "privateSystemPublication": {
     "status": "succeeded",
     "dataDate": "2026-10-26",
-    "exactSourceCommit": "3da504f474d9782b23fd592761d145877f33aee6",
+    "exactSourceCommit": "61ed085574dad63336a4eb182cc7c9f62b1bcac8",
     "audienceUnchanged": "owner-private"
   },
   "validation": {
@@ -85,12 +85,20 @@
       "passed": 15,
       "failed": 0,
       "fullSuite": false
-    }
+    },
+    "requiredDataStartupFocusedTests": {
+      "passed": 18,
+      "failed": 0,
+      "fullSuite": false,
+      "slowAndTerminalDeadlinesVerified": true,
+      "lateCallbacksCannotResumeOrDuplicate": true
+    },
+    "startupLoaderBytesMatchArchive": true
   },
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Private local ledgers and unchanged owner-private system only. This anonymous aggregate contains no company identity, email, contact details or credentials.",
   "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
-  "currentSynchronizationPurpose": "Incremental verified new-company receipt and existing-customer application/follow-up evidence. Not the scheduled23:50AsiaShanghai synchronization.",
+  "currentSynchronizationPurpose": "Code-only bounded startup budget repair;84campaign and3daily checkpoint unchanged. Not scheduled23:50AsiaShanghai synchronization.",
   "previousDaySyncVerification": {
     "dataDate": "2026-10-25",
     "scheduledAtLocal": "2026-10-25T23:50:00+08:00",
@@ -103,12 +111,12 @@
     "qualification": "No evidence of an on-time23:50 execution retained. Current recovery independently verified existing prior-date immutable remote summary; no claim of on-time completion."
   },
   "latestVerifiedSynchronizationDelta": {
-    "previousCampaignCount": 83,
+    "previousCampaignCount": 84,
     "currentCampaignCount": 84,
-    "newVerifiedCompanyReceipts": 1,
+    "newVerifiedCompanyReceipts": 0,
     "newlyVerifiedHumanReplyCustomers": 0,
     "newlyVerifiedPricingOrSampleRequestCustomers": 0,
-    "existingCustomerFollowupSentAndReopened": 1,
+    "existingCustomerFollowupSentAndReopened": 0,
     "actualExecutionDate": "2026-10-26",
     "finalInboxDeliveryClaimed": false
   },
@@ -140,12 +148,12 @@
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); no private rows or volatile timestamps",
   "dataSummaryDigest": "127d548ae06adea3a9f324e750ef484601b2d0941c30a4fafd01050327b3dab7",
-  "verifiedAtUtc": "2026-10-26 11:14:57 UTC",
+  "verifiedAtUtc": "2026-10-26 11:28:57 UTC",
   "newlyVerifiedHumanReplyCustomersInThisUpdate": 0,
   "newlyVerifiedPricingOrSampleRequestCustomersInThisUpdate": 0,
-  "publicationChangeType": "verified_receipt_and_existing_customer_followup",
-  "unchangedDataSummaryDigestSincePreviousPublication": false,
-  "newUniqueCompaniesInThisPublication": 1,
+  "publicationChangeType": "required_data_boot_budget_code_fix_only",
+  "unchangedDataSummaryDigestSincePreviousPublication": true,
+  "newUniqueCompaniesInThisPublication": 0,
   "observedHumanReplyCustomersRecordedOnDataDate": 1,
   "observedPricingOrSampleRequestCustomersRecordedOnDataDate": 1
 }

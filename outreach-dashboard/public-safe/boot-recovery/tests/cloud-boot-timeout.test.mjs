@@ -5,10 +5,10 @@ import {JSDOM} from 'jsdom';
 
 const source=fs.readFileSync(new URL('../web/cloud-boot.js',import.meta.url),'utf8');
 const flush=async()=>{await new Promise(resolve=>setImmediate(resolve));};
-function setup({fetch,hang=null,optional=false,error=null}={}){
- const dom=new JSDOM('<body class="command-center-booting"><script type="text/plain" data-hosted-script '+(optional?'data-optional ':'')+'src="/evidence.js"></script><script type="text/plain" data-hosted-script src="/command-center.js"></script></body>',{url:'https://workspace.test',runScripts:'outside-only'});
- const w=dom.window,timers=new Map(),nodes=[],loaded=[];let id=0,installs=0;
- w.setTimeout=(fn,delay)=>{timers.set(++id,{fn,delay});return id;};
+function setup({fetch,hang=null,optional=false,error=null,asset='/evidence.js'}={}){
+ const dom=new JSDOM('<body class="command-center-booting"><script type="text/plain" data-hosted-script '+(optional?'data-optional ':'')+'src="'+asset+'"></script><script type="text/plain" data-hosted-script src="/command-center.js"></script></body>',{url:'https://workspace.test',runScripts:'outside-only'});
+ const w=dom.window,timers=new Map(),nodes=[],loaded=[];let id=0,installs=0,clock=0;
+ w.setTimeout=(fn,delay)=>{timers.set(++id,{fn,delay,at:clock+delay});return id;};
  w.clearTimeout=key=>timers.delete(key);
  w.fetch=fetch|| (async url=>({ok:true,json:async()=>url==='/api/state'?{ok:true}:{files:{}}}));
  w.installHostedControls=()=>{installs++;w.document.body.classList.remove('command-center-booting');};
@@ -20,6 +20,10 @@ function setup({fetch,hang=null,optional=false,error=null}={}){
  };
  w.eval(source);
  return {dom,w,timers,nodes,loaded,get installs(){return installs;},
+  async tick(ms){const target=clock+ms;await flush();
+   for(;;){const entry=[...timers].filter(([,timer])=>timer.at<=target).sort((a,b)=>a[1].at-b[1].at)[0];if(!entry)break;
+    const [key,timer]=entry;clock=timer.at;timers.delete(key);timer.fn();await flush();}
+   clock=target;await flush();},
   async expire(delay){await flush();const entries=[...timers].filter(([,timer])=>timer.delay===delay);
    assert.ok(entries.length,'expected a bounded pending operation');
    for(const [key,timer]of entries){timers.delete(key);timer.fn();}await flush();},
@@ -94,5 +98,44 @@ test('the displayed boot error never echoes arbitrary response data',async()=>{
  const h=setup({fetch:async url=>({ok:false,json:async()=>url==='/api/state'?{ok:false,error:'secret_transport_payload'}:{files:{}}})});try{
   await flush();assert.ok(h.w.document.querySelector('.hosted-error'));assert.doesNotMatch(h.w.document.querySelector('.hosted-error').textContent,/secret_transport_payload/);
   assert.equal(h.installs,0);assert.equal(h.timers.size,0);
+ }finally{h.close();}
+});
+
+for(const file of ['autonomous-outreach-results.js','outreach-intelligence-latest.js']){
+ test('large required '+file+' still loads promptly and only once',async()=>{
+  const h=setup({asset:'/'+file+'?v=current'});try{
+   await flush();assert.equal(h.installs,1);assert.deepEqual(h.loaded,['/'+file,'/command-center.js']);
+   assert.equal(h.w.document.querySelector('.hosted-error'),null);assert.equal(h.timers.size,0);
+  }finally{h.close();}
+ });
+ test('large required '+file+' may finish after 10s but before its 30s deadline',async()=>{
+  const h=setup({asset:'/'+file+'?v=current',hang:'/'+file});try{
+   await flush();const load=h.nodes[0].onload;
+   await h.tick(10000);assert.equal(h.w.document.querySelector('.hosted-error'),null);assert.equal(h.installs,0);
+   await h.tick(15000);load();await flush();
+   assert.equal(h.installs,1);assert.deepEqual(h.loaded,['/'+file,'/command-center.js']);
+   assert.equal(h.nodes.filter(node=>new URL(node.src).pathname==='/'+file).length,1);
+   assert.equal(h.w.document.querySelector('.hosted-error'),null);assert.equal(h.timers.size,0);
+  }finally{h.close();}
+ });
+ test('large required '+file+' fails at 30s with safe diagnostics and cannot resume late',async()=>{
+  const h=setup({asset:'/'+file+'?customer=private_customer&token=private_token',hang:'/'+file});try{
+   await flush();const load=h.nodes[0].onload,error=h.nodes[0].onerror;
+   await h.tick(29999);assert.equal(h.w.document.querySelector('.hosted-error'),null);
+   await h.tick(1);const panel=h.w.document.querySelector('.hosted-error');assert.ok(panel);
+   assert.equal(h.w.__outreachBootFailure.asset,file);assert.equal(h.w.__outreachBootFailure.deadlineMs,30000);
+   assert.match(panel.textContent,new RegExp(file.replaceAll('.','\\.')));assert.match(panel.textContent,/30/);
+   assert.doesNotMatch(panel.textContent+JSON.stringify(h.w.__outreachBootFailure),/private_customer|private_token|[?&]/);
+   load();error();await flush();assert.equal(h.installs,0);assert.deepEqual(h.loaded,['/'+file]);
+   assert.equal(h.w.document.querySelector('.hosted-error'),panel);assert.equal(h.nodes[0].isConnected,false);assert.equal(h.timers.size,0);
+  }finally{h.close();}
+ });
+}
+test('a large permanent ledger cannot become optional through a data attribute',async()=>{
+ const file='/autonomous-outreach-results.js';const h=setup({asset:file,hang:file,optional:true});try{
+  await h.tick(3000);assert.equal(h.installs,0);assert.equal(h.w.document.querySelector('.hosted-error'),null);
+  await h.tick(7000);assert.equal(h.w.document.querySelector('.hosted-error'),null);
+  await h.tick(20000);assert.ok(h.w.document.querySelector('.hosted-error'));assert.equal(h.installs,0);
+  assert.deepEqual(h.loaded,[file]);assert.equal(h.w.__outreachBootWarnings,undefined);assert.equal(h.timers.size,0);
  }finally{h.close();}
 });
