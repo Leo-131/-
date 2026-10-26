@@ -1,0 +1,91 @@
+diff --git a/scripts/prepare-confirmed-record-patch.mjs b/scripts/prepare-confirmed-record-patch.mjs
+index 18a1a76..65e0621 100644
+--- a/scripts/prepare-confirmed-record-patch.mjs
++++ b/scripts/prepare-confirmed-record-patch.mjs
+@@ -5,0 +6 @@
++import {createHash} from 'node:crypto';
+@@ -23 +24,4 @@
+-const timeLabel=localTime.slice(11,16), screenshot=slug+'-sent-confirmation-'+executionDate+'.png';
++const timeLabel=localTime.slice(11,16);
++const explicitScreenshot=Object.hasOwn(a,'confirmationScreenshot');
++const screenshot=explicitScreenshot?a.confirmationScreenshot:slug+'-sent-confirmation-'+executionDate+'.png';
++if(explicitScreenshot&&(typeof screenshot!=='string'||!/^[a-z0-9][a-z0-9-]*\.(?:png|jpe?g)$/.test(screenshot)))throw Error('Local immutable confirmation screenshot basename required');
+@@ -24,0 +29,12 @@
++const screenshotClaims=[a.confirmationScreenshotSha256,a.screenshotSha256,a.receiptEvidence?.screenshotSha256].filter(value=>value!==undefined);
++let screenshotProof={};
++if(explicitScreenshot||screenshotClaims.length){
++ const stat=fs.lstatSync(root+screenshot);
++ if(!stat.isFile()||stat.isSymbolicLink())throw Error('Regular local confirmation screenshot required');
++ const bytes=fs.readFileSync(root+screenshot),hash=createHash('sha256').update(bytes).digest('hex');
++ const png=bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
++ const jpeg=bytes.subarray(0,3).equals(Buffer.from([255,216,255]));
++ if(bytes.length<16||!(screenshot.endsWith('.png')?png:jpeg)||!screenshotClaims.length
++   ||screenshotClaims.some(value=>typeof value!=='string'||!/^[a-f0-9]{64}$/.test(value)||value!==hash))throw Error('Confirmation screenshot bytes/hash mismatch');
++ screenshotProof={confirmationScreenshot:screenshot,confirmationScreenshotSha256:hash};
++}
+@@ -27,0 +44 @@
++Object.assign(r,screenshotProof);Object.assign(p,screenshotProof);
+@@ -45 +62 @@
+-change(attemptPath,oldAttempt.trimEnd(),JSON.stringify({...a,status:r.status,doNotResend:true,mailId,sentAtLocal:localTime,confirmationEvidence:evidence}));
++change(attemptPath,oldAttempt.trimEnd(),JSON.stringify({...a,...screenshotProof,status:r.status,doNotResend:true,mailId,sentAtLocal:localTime,confirmationEvidence:evidence}));
+diff --git a/tests/receipt-patch-generator.test.mjs b/tests/receipt-patch-generator.test.mjs
+index b14f9b0..034bd3f 100644
+--- a/tests/receipt-patch-generator.test.mjs
++++ b/tests/receipt-patch-generator.test.mjs
+@@ -7,0 +8 @@
++import {createHash} from 'node:crypto';
+@@ -116,0 +118,54 @@
++const PNG_BYTES=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aVxkAAAAASUVORK5CYII=','base64');
++const JPEG_BYTES=Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAAf/2Q==','base64');
++function explicitScreenshot(f,{name='fixture-confirmed.jpg',bytes=JPEG_BYTES,hashField='confirmationScreenshotSha256'}={}){
++ const attemptName='fixture-send-attempt-2026-10-13.json',a=JSON.parse(fs.readFileSync(path.join(f.dir,attemptName),'utf8'));
++ const hash=createHash('sha256').update(bytes).digest('hex');
++ if(!name.includes('/')&&!name.includes('\\')&&!name.includes(':'))fs.writeFileSync(path.join(f.dir,name),bytes);
++ a.confirmationScreenshot=name;
++ if(hashField==='receiptEvidence')a.receiptEvidence={screenshotSha256:hash};else if(hashField)a[hashField]=hash;
++ f.put(attemptName,a);return {a,hash,name,attemptName};
++}
++
++test('email explicit PNG/JPEG screenshots preserve actual file and hash in both receipt stores without writes',()=>{
++ for(const [extension,bytes,hashField]of [['png',PNG_BYTES,'confirmationScreenshotSha256'],['jpg',JPEG_BYTES,'confirmationScreenshotSha256'],['jpeg',JPEG_BYTES,'screenshotSha256'],['jpg',JPEG_BYTES,'receiptEvidence']]){
++  const f=fixture(100);try{
++   const proof=explicitScreenshot(f,{name:'fixture-confirmed.'+extension,bytes,hashField}),originals=snapshotFixture(f);
++   const proposal=f.run();assertFixtureUnchanged(f,originals);
++   const files=applyProposal(proposal,originals),key=name=>path.join(f.dir,name).replaceAll('\\','/');
++   const receipt=JSON.parse(files.get(key('confirmed-outreach-2026-10-13.json'))).records.at(-1);
++   const permanent=JSON.parse(files.get(key('autonomous-outreach-results.js')).match(/\n\s*,(\{[^\n]*\})\n\];$/)[1]);
++   const attempt=JSON.parse(files.get(key(proof.attemptName)));
++   for(const row of [receipt,permanent,attempt]){assert.equal(row.confirmationScreenshot,proof.name);assert.equal(row.confirmationScreenshotSha256,proof.hash);}
++   assert.equal(receipt.subject,'FLEXTAIL global brand representation');assert.equal(receipt.mailId,'1_0:fixture-new');
++   assert.equal(receipt.country,proof.a.country);assert.equal(receipt.icp,proof.a.icp);assert.equal(attempt.doNotResend,true);
++  }finally{f.cleanup();}
++ }
++});
++
++test('email explicit screenshot rejects wrong magic, extension, hash, absent file and unsafe basenames without writes',()=>{
++ const cases=[
++  {name:'fixture-confirmed.png',bytes:JPEG_BYTES},{name:'fixture-confirmed.jpg',bytes:PNG_BYTES},
++  {name:'fixture-confirmed.jpeg',bytes:PNG_BYTES},{bytes:Buffer.from([255,216,255])},
++  {bytes:Buffer.from('synthetic text is not an image')},{name:'missing.jpg',missing:true},
++  {hashField:null},{badHash:true},{conflictingHash:true},
++  ...['../outside.jpg','C:/outside.jpg','subdir/image.jpg','..\\outside.jpg','image.jpg:stream','fixture.JPG'].map(name=>({name}))
++ ];
++ for(const item of cases){const f=fixture(100);try{
++  const p=explicitScreenshot(f,item);
++  if(item.missing)fs.unlinkSync(path.join(f.dir,p.name));
++  if(item.badHash||item.conflictingHash)f.put(p.attemptName,{...p.a,...(item.badHash?{confirmationScreenshotSha256:'f'.repeat(64)}:{screenshotSha256:'e'.repeat(64)})});
++  const originals=snapshotFixture(f);
++  assert.throws(f.run,error=>{assert.equal(String(error.stdout),'');return true;},JSON.stringify(item));
++  assertFixtureUnchanged(f,originals);
++ }finally{f.cleanup();}}
++});
++
++test('email legacy screenshot fallback remains unchanged when no explicit screenshot fields exist',()=>{
++ const f=fixture(100);try{
++  const originals=snapshotFixture(f),proposal=f.run();assertFixtureUnchanged(f,originals);
++  assert.match(proposal,/fixture-sent-confirmation-2026-10-13\.png/);
++  assert.doesNotMatch(proposal,/confirmationScreenshotSha256/);
++  fs.unlinkSync(path.join(f.dir,'fixture-sent-confirmation-2026-10-13.png'));
++  assert.throws(f.run,/Saved confirmation screenshot required/);
++ }finally{f.cleanup();}
++});
