@@ -45,7 +45,7 @@
   "privateSystemPublication": {
     "status": "succeeded",
     "dataDate": "2026-10-26",
-    "exactSourceCommit": "3d668d621ad9c680573b4232e7c1fdfeaa3abfd9",
+    "exactSourceCommit": "25be00193e9392ff0f1becbcee938f2f53208ef6",
     "audienceUnchanged": "owner-private"
   },
   "validation": {
@@ -66,12 +66,26 @@
     "archiveSourceLedgerRows": 2773,
     "archiveSourceSemanticallyEqual": true,
     "productionSuppressionGuardBytesMatchBuiltArchive": true,
-    "concurrentOwnerUpdates": "Retained normal fast-forward source changes; unchanged own targeted checks not repeated per customer. No claim of running a complete suite."
+    "concurrentOwnerUpdates": "Retained normal fast-forward source changes; unchanged own targeted checks not repeated per customer. No claim of running a complete suite.",
+    "replyTimelineFocusedTests": {
+      "passed": 22,
+      "failed": 0
+    },
+    "replyTimelineNumericCompatibility": {
+      "passed": 1,
+      "failed": 0
+    },
+    "publicStandaloneEventAndSuppressionTests": {
+      "passed": 19,
+      "failed": 0
+    },
+    "explicitDatedOutcomesPreserved": true,
+    "replyTimelineCodeMatchesArchive": true
   },
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Private local ledgers and unchanged owner-private system only. This anonymous aggregate contains no company identity, email, contact details or credentials.",
   "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
-  "currentSynchronizationPurpose": "Incremental checkpoint for actual2026-10-26 data. Today's23:50AsiaShanghai scheduled sync not yet due.",
+  "currentSynchronizationPurpose": "Code-only repair of dated reply/contact/opportunity timeline mapping;83campaign and2daily data checkpoint unchanged. Not the scheduled23:50AsiaShanghai synchronization.",
   "previousDaySyncVerification": {
     "dataDate": "2026-10-25",
     "scheduledAtLocal": "2026-10-25T23:50:00+08:00",
@@ -119,7 +133,10 @@
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); no private rows or volatile timestamps",
   "dataSummaryDigest": "f44a92e408753d06b76f3d0503c406fad6c6bd2c58bdfafd87a0a506dc06db6b",
-  "verifiedAtUtc": "2026-10-26T10:19:56.416Z",
+  "verifiedAtUtc": "2026-10-26T10:35:57.676Z",
   "newlyVerifiedHumanReplyCustomersInThisUpdate": 1,
-  "newlyVerifiedPricingOrSampleRequestCustomersInThisUpdate": 1
+  "newlyVerifiedPricingOrSampleRequestCustomersInThisUpdate": 1,
+  "publicationChangeType": "reply_timeline_code_fix_only",
+  "unchangedDataSummaryDigestSincePreviousPublication": true,
+  "newUniqueCompaniesInThisPublication": 0
 }

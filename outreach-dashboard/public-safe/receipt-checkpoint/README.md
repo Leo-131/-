@@ -1,5 +1,7 @@
 # Receipt checkpoint recovery — safe source extract
 
+Reply timeline repair, source `25be00193e9392ff0f1becbcee938f2f53208ef6`: explicit dated inbound replies, contact details and opportunities now reach the same customer event ledger used by the live interface. Each keeps its own evidence; an outbound receipt does not prove an inbound event. Automated replies stay separate, missing timestamps remain unverified, and no new send or sale is inferred. The included `customer-state.js` is the unchanged rendering dependency. Run `node --test tests/customer-event-ledger-results.test.mjs tests/suppression-guard.test.mjs`; the standalone extract passes19 synthetic tests. It contains no customer ledger or real contact details.
+
 2026-10-26 update: the two suppression guards match private Site source commit `3d668d621ad9c680573b4232e7c1fdfeaa3abfd9`. Exact opt-out, unsubscribe and do-not-contact states stay locked across fresh research sources and company/group aliases. Case and separator normalization does not turn unrelated notes into suppression. Run `node --test tests/suppression-guard.test.mjs` for the standalone synthetic regression. No real customer data is included.
 
 Source: private Site commit `0ae1c012af7a9dfa50e835f526465d0263580d93`, 2026-10-25 Asia/Shanghai, including merge `c066bdbeedf138331ac8cc809cc9cc0bdd5ab6ba`. The merge preserves concurrent owner changes.
