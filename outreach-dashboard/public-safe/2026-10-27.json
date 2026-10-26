@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 3,
+  "dataDate": "2026-10-27",
+  "timezone": "Asia/Shanghai",
+  "goalStatus": "active",
+  "campaignTarget": 500,
+  "confirmedUniqueNewSendsInCampaign": 89,
+  "remainingInCampaign": 411,
+  "dailyTarget": 100,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 1,
+  "dailyRemaining": 99,
+  "countedChannelsInCurrentCampaign": {
+    "email": 74,
+    "linkedin": 10,
+    "instagram": 5
+  },
+  "countedChannelsOnDataDate": {
+    "email": 0,
+    "linkedin": 0,
+    "instagram": 1
+  },
+  "countingRule": "Unique new company/group with actual email receipt or independently reopened official social outgoing message. Drafts, invitations, follows, opened conversations, forms, unknown outcomes, prior company/group contacts and permanent failures are excluded.",
+  "deliveryStatus": "Verified outgoing history does not establish final inbox delivery or a human response.",
+  "knownFailedDeliveryReceiptsExcluded": 8,
+  "priorGroupDuplicateReceiptsExcluded": 1,
+  "retainedExclusions": 9,
+  "replyRate": null,
+  "replyRateReason": "Sent-cohort reply observations remain incomplete. This outgoing-receipt update does not establish a no-reply rate or improved human conversion.",
+  "humanReplyImprovementProven": false,
+  "executionTransport": "Codex in-app browser",
+  "emailDispatchStatus": "degraded_pending_provider_diagnosis_no_global_resume",
+  "globalEmailDispatchResumed": false,
+  "unattendedHostVerified": false,
+  "dailyTerritoryVerification": "Actual fresh bounded agency-table read on2026-10-27; contract dates control over stale formula labels.",
+  "receiptConsistencyAudit": {
+    "campaignRows": 89,
+    "dailyRows": 1,
+    "allCampaignReceiptsExactlyOnceInBothStores": true,
+    "permanentRows": 2936,
+    "privateSiteRows": 2779,
+    "missingReceipts": 0,
+    "duplicateReceipts": 0,
+    "retainedExclusions": 9,
+    "previous88AndNineExclusionsPreserved": true,
+    "previousPrivateRowsPreserved": true
+  },
+  "privateSystemPublication": {
+    "status": "succeeded",
+    "dataDate": "2026-10-27",
+    "audienceUnchanged": "owner-private",
+    "verificationAuthority": "Controller-confirmed successful private publication and exact ledger readback; this public document contains only aggregate statistics."
+  },
+  "validation": {
+    "localOriginalReceiptHelperAudit": "passed",
+    "immutablePriorReceiptsAndExclusionsAudit": "passed",
+    "localAuditAtUtc": "2026-10-26T17:21:44.636Z",
+    "fullSuiteRunForThisDataUpdate": false
+  },
+  "privateCustomerDataIncluded": false,
+  "fullCustomerData": "Complete customer records remain in local private ledgers and the owner-private customer system. No customer identities, business contacts, message content or credentials are included.",
+  "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
+  "currentSynchronizationPurpose": "Incremental anonymous statistics for the explicitly audited89-company checkpoint only. Not the2026-10-27 23:50AsiaShanghai scheduled synchronization.",
+  "currentChannelRestrictions": {
+    "email": "Partial delivery degradation remains under provider diagnosis; global dispatch resumption is not verified.",
+    "linkedinNewPageConversations": "Provider quota restriction remains subject to current live verification.",
+    "instagram": "One actual new-company outgoing message on the data date was independently reopened and permanently recorded; no unlimited-capacity claim.",
+    "independentResearch": "active"
+  },
+  "scheduledWindowCompletionClaimed": false,
+  "newUniqueCompaniesInThisPublication": 1,
+  "dataIdentity": {
+    "dataDate": "2026-10-27",
+    "timezone": "Asia/Shanghai",
+    "campaignTarget": 500,
+    "campaignConfirmed": 89,
+    "campaignRemaining": 411,
+    "dailyTarget": 100,
+    "dailyConfirmed": 1,
+    "dailyRemaining": 99,
+    "knownDeliveryFailuresExcluded": 8,
+    "priorGroupDuplicatesExcluded": 1,
+    "campaignChannels": {
+      "email": 74,
+      "linkedin": 10,
+      "instagram": 5
+    },
+    "dailyChannels": {
+      "email": 0,
+      "linkedin": 0,
+      "instagram": 1
+    },
+    "globalEmailDispatchResumed": false,
+    "unattendedHostVerified": false
+  },
+  "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); fixed field order, anonymous counts only; volatile timestamps excluded",
+  "dataSummaryDigest": "c3acb21bc13472403051a95ecbffd5cb03960c50df1182cbf188d7fb488ae1c1"
+}
