@@ -1,0 +1,157 @@
+diff --git a/tests/cloud-boot-timeout.test.mjs b/tests/cloud-boot-timeout.test.mjs
+index c2151b2..32a344d 100644
+--- a/tests/cloud-boot-timeout.test.mjs
++++ b/tests/cloud-boot-timeout.test.mjs
+@@ -1,13 +1,15 @@
+ import test from 'node:test';
+ import assert from 'node:assert/strict';
+ import fs from 'node:fs';
+-import {JSDOM} from 'jsdom';
++import {JSDOM,VirtualConsole} from 'jsdom';
+ 
+ const source=fs.readFileSync(new URL('../web/cloud-boot.js',import.meta.url),'utf8');
+ const flush=async()=>{await new Promise(resolve=>setImmediate(resolve));};
+-function setup({fetch,hang=null,optional=false,error=null,asset='/evidence.js',scriptsHtml=null,execute=null,configure=null}={}){
+- const dom=new JSDOM('<body class="command-center-booting">'+(scriptsHtml??'<script type="text/plain" data-hosted-script '+(optional?'data-optional ':'')+'src="'+asset+'"></script><script type="text/plain" data-hosted-script src="/command-center.js"></script>')+'</body>',{url:'https://workspace.test',runScripts:'outside-only'});
++function setup({fetch,hang=null,optional=false,error=null,asset='/evidence.js',scriptsHtml=null,execute=null,configure=null,storage=null,url='https://workspace.test'}={}){
++ let reloads=0;const virtualConsole=new VirtualConsole();virtualConsole.on('jsdomError',error=>{if(error.stack?.includes('LocationImpl.reload'))reloads++;});
++ const dom=new JSDOM('<body class="command-center-booting">'+(scriptsHtml??'<script type="text/plain" data-hosted-script '+(optional?'data-optional ':'')+'src="'+asset+'"></script><script type="text/plain" data-hosted-script src="/command-center.js"></script>')+'</body>',{url,runScripts:'outside-only',virtualConsole});
+  const w=dom.window,timers=new Map(),nodes=[],loaded=[];let id=0,installs=0,clock=0;
++ if(storage)Object.defineProperty(w,'sessionStorage',{configurable:true,value:storage});
+  w.setTimeout=(fn,delay)=>{timers.set(++id,{fn,delay,at:clock+delay});return id;};
+  w.clearTimeout=key=>timers.delete(key);
+  w.fetch=fetch|| (async url=>({ok:true,json:async()=>url==='/api/state'?{ok:true}:{files:{}}}));
+@@ -20,7 +22,7 @@ function setup({fetch,hang=null,optional=false,error=null,asset='/evidence.js',s
+  };
+  configure?.(w);
+  w.eval(source);
+- return {dom,w,timers,nodes,loaded,get installs(){return installs;},
++ return {dom,w,timers,nodes,loaded,get installs(){return installs;},get reloads(){return reloads;},
+   async tick(ms){const target=clock+ms;await flush();
+    for(;;){const entry=[...timers].filter(([,timer])=>timer.at<=target).sort((a,b)=>a[1].at-b[1].at)[0];if(!entry)break;
+     const [key,timer]=entry;clock=timer.at;timers.delete(key);timer.fn();await flush();}
+@@ -187,3 +189,70 @@ test('a malformed desktop ledger fails without loading any baseline chunks',asyn
+   await flush();assert.equal(h.installs,0);assert.ok(h.w.document.querySelector('.hosted-error'));assert.deepEqual(h.loaded,[]);assert.equal(h.timers.size,0);
+  }finally{h.close();}
+ });
++
++const retryScripts=(hash=fixtureHash)=>{
++ const part=index=>'/generated-data/'+hash+'/part-'+String(index).padStart(3,'0')+'.js';
++ return {part,html:[0,1].map(index=>'<script type="text/plain" data-hosted-script data-progress-file="autonomous-outreach-results.js" data-record-hash="'+hash+'" data-record-chunk="'+index+'" data-record-chunks="2" data-record-end="'+(index+1)+'" data-record-total="2" src="'+part(index)+'"></script>').join('')+'<script type="text/plain" data-hosted-script src="/command-center.js"></script>'};
++};
++const retryStorage=()=>{const entries=new Map();return {entries,getItem:key=>entries.has(key)?entries.get(key):null,setItem:(key,value)=>entries.set(key,value)};};
++const retryExecute=(hash=fixtureHash)=>(w,path)=>{if(path.endsWith('part-000.js')){w.AUTONOMOUS_OUTREACH_RESULTS=[{id:1}];w.__outreachLedgerChunkState={hash,index:0,rows:1};}if(path.endsWith('part-001.js')){w.AUTONOMOUS_OUTREACH_RESULTS.push({id:2});w.__outreachLedgerChunkState={hash,index:1,rows:2};}};
++test('one authenticated startup chunk timeout reloads once without replaying scripts or requests',async()=>{
++ const parts=retryScripts(),storage=retryStorage(),calls=[];
++ const h=setup({scriptsHtml:parts.html,execute:retryExecute(),hang:parts.part(1),storage,url:'https://workspace.test/?search=private_customer',fetch:async(...args)=>{calls.push(args);return {ok:true,json:async()=>args[0]==='/api/state'?{ok:true}:{files:{}}};}});try{
++  await flush();const load=h.nodes[1].onload,error=h.nodes[1].onerror;
++  await h.tick(30000);assert.equal(h.reloads,1);assert.equal(h.installs,0);assert.equal(h.w.document.querySelector('.hosted-error'),null);
++  assert.equal(storage.entries.size,1);assert.deepEqual([...storage.entries.values()],['1']);assert.doesNotMatch([...storage.entries.keys()].join(''),/private_customer|[?&]/);
++  retryExecute()(h.w,parts.part(1));load();error();await flush();assert.equal(h.reloads,1);assert.equal(h.installs,0);
++  assert.deepEqual(h.loaded,[parts.part(0),parts.part(1)]);assert.deepEqual(calls.map(args=>args[0]),['/api/state','/api/progress']);assert.equal(h.timers.size,0);
++ }finally{h.close();}
++});
++test('the shared manifest budget prevents a second page or a different chunk from reloading again',async()=>{
++ const parts=retryScripts(),storage=retryStorage();
++ const first=setup({scriptsHtml:parts.html,execute:retryExecute(),hang:parts.part(1),storage});try{await first.tick(30000);assert.equal(first.reloads,1);}finally{first.close();}
++ const recovered=setup({scriptsHtml:parts.html,execute:retryExecute(),storage});try{await flush();assert.equal(recovered.installs,1);assert.equal(storage.entries.size,1);assert.equal(recovered.reloads,0);}finally{recovered.close();}
++ const next=setup({scriptsHtml:parts.html,execute:retryExecute(),hang:parts.part(0),storage});try{
++  await next.tick(30000);assert.equal(next.reloads,0);assert.equal(next.installs,0);assert.ok(next.w.document.querySelector('.hosted-error'));
++  assert.match(next.w.document.querySelector('.hosted-error').textContent,/资源|30/);assert.ok(next.w.document.querySelector('.hosted-error button'));assert.equal(storage.entries.size,1);
++ }finally{next.close();}
++});
++test('a new verified manifest or a different pathname receives an independent one-reload budget',async()=>{
++ const storage=retryStorage();for(const [hash,path]of [[fixtureHash,'/'],['b'.repeat(64),'/'],[fixtureHash,'/outreach-dashboard.html']]){
++  const parts=retryScripts(hash),h=setup({scriptsHtml:parts.html,execute:retryExecute(hash),hang:parts.part(0),storage,url:'https://workspace.test'+path});try{await h.tick(30000);assert.equal(h.reloads,1);}finally{h.close();}
++ }assert.equal(storage.entries.size,3);
++});
++test('unavailable, corrupt or unpersisted retry storage leaves a manual resource error',async()=>{
++ const parts=retryScripts();for(const storage of [
++  {getItem(){throw Error('storage unavailable');},setItem(){}},
++  {getItem:()=>null,setItem(){throw Error('quota');}},
++  {getItem:()=>null,setItem(){}},
++  {getItem:()=>'{broken marker',setItem(){throw Error('must not replace corrupt marker');}}
++ ]){const h=setup({scriptsHtml:parts.html,execute:retryExecute(),hang:parts.part(0),storage});try{
++  await h.tick(30000);assert.equal(h.reloads,0);assert.equal(h.installs,0);assert.ok(h.w.document.querySelector('.hosted-error'));assert.equal(h.timers.size,0);
++ }finally{h.close();}}
++});
++test('authentication failures and non-boolean state success never get an automatic resource reload',async()=>{
++ const parts=retryScripts();for(const [ok,state]of [[false,{ok:false}],[false,{ok:true}],[true,{ok:true,accessRequired:true}],[true,{ok:'true'}]]){
++  const storage=retryStorage(),h=setup({scriptsHtml:parts.html,execute:retryExecute(),hang:parts.part(0),storage,fetch:async url=>({ok,json:async()=>url==='/api/state'?state:{files:{}}})});try{
++   await h.tick(30000);assert.equal(h.reloads,0);assert.equal(h.installs,0);assert.equal(storage.entries.size,0);
++  }finally{h.close();}
++ }
++});
++test('only a canonical chunk timeout qualifies, never ordinary assets, load errors or invalid data',async()=>{
++ const parts=retryScripts();for(const options of [
++  {asset:'/autonomous-outreach-results.js',hang:'/autonomous-outreach-results.js'},
++  {scriptsHtml:twoChunks,execute:executeChunk,hang:'/generated-data/test/part-1.js'},
++  {scriptsHtml:parts.html.replace('src="'+parts.part(0),'src="https://external.test'+parts.part(0)),hang:parts.part(0)},
++  {scriptsHtml:parts.html.replace('src="'+parts.part(0),'src="'+parts.part(0)+'?token=private'),hang:parts.part(0)},
++  {scriptsHtml:parts.html.replace('src="'+parts.part(0),'src="'+parts.part(0).replace(fixtureHash,'b'.repeat(64))),hang:parts.part(0).replace(fixtureHash,'b'.repeat(64))},
++  {scriptsHtml:parts.html.replace('src="'+parts.part(0),'src="'+parts.part(1)),hang:parts.part(1)},
++  {scriptsHtml:parts.html,hang:parts.part(0),configure:w=>{w.document.body.className='command-center-active';}},
++  {scriptsHtml:parts.html,execute:retryExecute(),error:parts.part(0)},
++  {scriptsHtml:parts.html}
++ ]){const storage=retryStorage(),h=setup({...options,storage});try{await h.tick(30000);assert.equal(h.reloads,0);assert.equal(h.installs,0);assert.ok(h.w.document.querySelector('.hosted-error'));assert.equal(storage.entries.size,0);}finally{h.close();}}
++});
++test('successful startup never spends a reload budget and settled callbacks cannot refresh an active workspace',async()=>{
++ const parts=retryScripts(),storage=retryStorage(),h=setup({scriptsHtml:parts.html,execute:retryExecute(),storage});try{
++  await flush();assert.equal(h.installs,1);assert.equal(h.reloads,0);assert.equal(storage.entries.size,0);assert.equal(h.timers.size,0);
++  for(const node of h.nodes){node.onload?.();node.onerror?.();}await h.tick(60000);assert.equal(h.reloads,0);assert.equal(h.installs,1);assert.equal(storage.entries.size,0);
++ }finally{h.close();}
++});
+diff --git a/web/cloud-boot.js b/web/cloud-boot.js
+index 62f7243..8883f5a 100644
+--- a/web/cloud-boot.js
++++ b/web/cloud-boot.js
+@@ -3,7 +3,20 @@
+   const bootError=code=>Object.assign(new Error(messages[code]),{code});
+   // Required data assets keep an explicit, finite budget; they never become optional.
+   const largeRequiredData=new Set(['autonomous-outreach-results.js','outreach-intelligence-latest.js']);
+-  let failedResource=null;
++  let failedResource=null,startupAuthenticated=false,controlsInstalled=false,reloadPending=false;
++  function retryStartupChunk(code,original,chunk){
++    if(code!=='script_timeout'||!startupAuthenticated||controlsInstalled||!document.body.classList.contains('command-center-booting')||!chunk)return false;
++    const url=new URL(original.src),expected='/generated-data/'+chunk.hash+'/part-'+String(chunk.index).padStart(3,'0')+'.js';
++    if(url.origin!==location.origin||url.username||url.password||url.search||url.hash||!/^\/generated-data\/[a-f0-9]{64}\/part-\d{3}\.js$/.test(url.pathname)||url.pathname!==expected)return false;
++    // One budget covers every part of this manifest on this page, across reloads.
++    // Never clear it on success: a later visit must not restart a recovery loop.
++    const key='outreach-boot-reload:v1:'+location.pathname+':'+chunk.hash;
++    try{
++      const storage=window.sessionStorage;if(storage.getItem(key)!==null)return false;
++      storage.setItem(key,'1');if(storage.getItem(key)!=='1')return false;
++      location.reload();return true;
++    }catch{return false;}
++  }
+   async function readJson(url,deadlineMs=10000){
+     const controller=new AbortController();let timer;
+     // Bound fetch AND body parsing. A deadline does not prove cancellation;
+@@ -35,6 +48,7 @@
+     const {response,data:state}=stateResult;
+     if(state.accessRequired){location.replace('/login.html?returnTo='+encodeURIComponent(location.pathname+location.search));return;}
+     if(!response.ok||!state.ok)throw bootError('state_unavailable');
++    startupAuthenticated=response.ok===true&&state.ok===true&&!state.accessRequired;
+     window.__outreachState=state;
+     window.__outreachProgress=progressResult?.response.ok?progressResult.data:null;
+     const globals={'public/outreach_data.json':'OUTREACH_SHEET_DATA','daily-automation-latest.js':'DAILY_AUTOMATION_LATEST','daily-automation-execution-latest.js':'DAILY_AUTOMATION_EXECUTION_LATEST','google-lead-discovery-latest.js':'GOOGLE_LEAD_DISCOVERY_LATEST','autonomous-outreach-results.js':'AUTONOMOUS_OUTREACH_RESULTS','outreach-intelligence-latest.js':'OUTREACH_INTELLIGENCE_LATEST','system-visibility-latest.js':'SYSTEM_VISIBILITY_LATEST','system-readiness-latest.js':'SystemReadinessData','github-sync/latest-status.js':'GITHUB_SYNC_LATEST'};
+@@ -69,7 +83,7 @@
+             if(optional){
+               (window.__outreachBootWarnings??=[]).push({asset:file,code});
+               console.warn('Optional workspace resource unavailable:',file,code);
+-            }else{failedResource={asset:file,deadlineMs};reject(bootError(code));return;}
++            }else{failedResource={asset:file,deadlineMs};reloadPending=retryStartupChunk(code,original,chunk);reject(bootError(code));return;}
+           }
+           resolve();
+         };
+@@ -80,8 +94,9 @@
+         try{original.after(script);if(!original.src)finish();}catch{finish('script_load_failed');}
+       });
+     }
+-    window.installHostedControls();
++    controlsInstalled=true;window.installHostedControls();
+   }catch(error){
++    if(reloadPending)return;
+     document.body.classList.remove('command-center-booting');document.body.classList.add('command-center-active');
+     const panel=document.createElement('main');panel.className='hosted-error';
+     const title=document.createElement('h1');title.textContent='客户开发中心暂未加载';
