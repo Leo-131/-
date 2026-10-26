@@ -1,0 +1,217 @@
+diff --git a/docs/plans/2026-10-26-customer-navigation.md b/docs/plans/2026-10-26-customer-navigation.md
+new file mode 100644
+index 0000000..c4148f4
+--- /dev/null
++++ b/docs/plans/2026-10-26-customer-navigation.md
+@@ -0,0 +1,18 @@
++# Customer filter navigation
++
++The confirmed delay is a full document navigation after filter submit, sorting,
++paging and reset. It reloads the already verified startup data chunks. Keep the
++existing submit-to-filter behaviour and customer projection unchanged.
++
++Use a small customers-only navigator in command-center.js. It updates same-origin,
++same-path customer URLs with history.pushState, synchronizes the existing query
++object, and replaces only the current .cc-main content with customers(). Sorting,
++paging and reset links use one delegated handler. popstate rereads the URL without
++adding history. Identical URLs do not add entries. Other views, external paths,
++modified clicks, downloads and new-window links retain normal browser behaviour.
++
++No boot, authentication, execution, data loading or send path changes. Customer
++records remain memoized; ordinary full-page data refresh and the existing i18n
++MutationObserver remain in place. Targeted synthetic DOM tests cover fill versus
++submit, exact filter URLs/rows, zero fetch or reload, back/forward, duplicate
++history, sort/page/reset boundaries and unchanged data/shell nodes.
+diff --git a/tests/customer-navigation.test.mjs b/tests/customer-navigation.test.mjs
+new file mode 100644
+index 0000000..47e1c4a
+--- /dev/null
++++ b/tests/customer-navigation.test.mjs
+@@ -0,0 +1,114 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import fs from 'node:fs';
++import {JSDOM,VirtualConsole} from 'jsdom';
++
++const read=file=>fs.readFileSync(new URL('../web/'+file,import.meta.url),'utf8');
++const source=read('command-center.js');
++const fixtures=()=>Array.from({length:121},(_,i)=>Object.freeze({
++ id:'synthetic-'+i,name:'Fixture '+String(i).padStart(3,'0'),
++ company:i===120?'Needle Trading':(i%2?'Alpha':'Beta')+' Shop '+String(i).padStart(3,'0'),
++ country:'Singapore',industry:'Outdoor retail',platform:i%2?'email':'instagram',
++ source:'synthetic',status:'Pending',fitScore:80,
++ updatedAt:'2026-10-'+String(1+i%20).padStart(2,'0')+'T00:00:00Z',
++ website:'https://synthetic-'+i+'.test/',contactUrl:'https://synthetic-'+i+'.test/contact',
++}));
++function setup(search='?view=customers'){
++ const errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
++ const dom=new JSDOM('<body><div id="retained-control">retained</div></body>',{url:'https://workspace.test/'+search,runScripts:'outside-only',virtualConsole:vc});
++ const w=dom.window,records=fixtures(),before=JSON.stringify(records),calls={fetch:0,push:0,timeout:0};
++ w.fetch=()=>{calls.fetch++;throw Error('Unexpected fetch');};
++ for(const f of ['outreach-efficiency.js','outreach-engine.js','outreach-analytics.js','report-integrity.js','contact-discovery.js','customer-projection.js','customer-event-ledger.js','customer-state.js'])w.eval(read(f));
++ w.__fixtureRecords=records;w.AUTONOMOUS_OUTREACH_DATA={tasks:[],audit:[],settings:{}};
++ const anchor='  window.exportCurrentReportCsv = exportCurrentReportCsv;';assert.ok(source.includes(anchor));
++ w.eval(source.replace(anchor,`  derivedCache.set('customerRecords', window.__fixtureRecords);
++  window.__navigationTest={customers,customerRecords,applyCustomerFilters,query,
++    installCustomerNavigation:typeof installCustomerNavigation==='function'?installCustomerNavigation:null};return;
++`+anchor));
++ const api=w.__navigationTest,shell=w.document.createElement('div');shell.id='command-center-shell';
++ shell.innerHTML='<aside class="cc-sidebar">sidebar</aside><main class="cc-main">'+api.customers()+'</main><aside class="cc-rail">rail</aside>';
++ w.document.body.appendChild(shell);api.installCustomerNavigation?.(shell);
++ // Inline submit attributes are deliberately not executed by outside-only JSDOM.
++ shell.addEventListener('submit',e=>api.applyCustomerFilters(e));
++ const push=w.history.pushState.bind(w.history);w.history.pushState=(...args)=>{calls.push++;return push(...args);};
++ const snapshot={shell,main:shell.querySelector('.cc-main'),sidebar:shell.querySelector('.cc-sidebar'),rail:shell.querySelector('.cc-rail'),control:w.document.getElementById('retained-control')};
++ return {dom,w,api,records,before,calls,errors,...snapshot,
++  rows:()=>[...shell.querySelectorAll('.cc-table tbody tr')],
++  submit(){const e=new w.Event('submit',{bubbles:true,cancelable:true});shell.querySelector('form').dispatchEvent(e);assert.equal(e.defaultPrevented,true);},
++  click(el,opts={}){const e=new w.MouseEvent('click',{bubbles:true,cancelable:true,button:0,...opts});el.dispatchEvent(e);return e;},
++  close(){dom.window.close();},
++ };
++}
++const cellCompanies=h=>h.rows().map(r=>r.children[1].childNodes[0].textContent);
++function historyMove(h,method){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Missing popstate')),1000);h.w.addEventListener('popstate',()=>{clearTimeout(timer);resolve();},{once:true});h.w.history[method]();});}
++
++test('typing alone retains rows; submitting updates exact URL and matching rows without document navigation or fetch',()=>{
++ const h=setup();try{
++  const old=h.main.innerHTML;h.w.document.getElementById('customer-search').value='Needle';
++  h.w.document.getElementById('customer-search').dispatchEvent(new h.w.Event('input',{bubbles:true}));
++  assert.equal(h.main.innerHTML,old);assert.equal(h.w.location.search,'?view=customers');
++  h.submit();assert.equal(h.w.location.search,'?view=customers&search=Needle&sort=latestUpdate&direction=desc');
++  assert.deepEqual(cellCompanies(h),['Needle Trading']);assert.equal(h.calls.fetch,0);assert.deepEqual(h.errors,[]);
++  assert.equal(h.w.document.getElementById('command-center-shell'),h.shell);assert.equal(h.shell.querySelector('.cc-main'),h.main);
++ }finally{h.close();}
++});
++
++test('repeated identical submits add no duplicate browser history and preserve every filter value',()=>{
++ const h=setup();try{
++  h.w.document.getElementById('customer-search').value='Alpha';
++  h.w.document.getElementById('customer-channel').value='website';
++  h.w.document.getElementById('customer-platform').value='email';
++  h.w.document.getElementById('customer-country').value='Singapore';
++  h.w.document.getElementById('customer-sort').value='company';
++  h.submit();const url=h.w.location.href,length=h.w.history.length;
++  h.submit();assert.equal(h.w.location.href,url);assert.equal(h.w.history.length,length);assert.equal(h.calls.push,1);
++  assert.equal(h.api.query.get('platform'),'email');assert.equal(h.api.query.get('channel'),'website');assert.equal(h.api.query.get('country'),'Singapore');
++  assert.ok(h.rows().length>0);assert.ok(cellCompanies(h).every(x=>x.startsWith('Alpha')));assert.deepEqual(h.errors,[]);
++ }finally{h.close();}
++});
++
++test('sort, page and reset remain same-page, retain filters and render current URL state',()=>{
++ const h=setup('?view=customers&source=synthetic&sort=company&direction=asc');try{
++  assert.equal(h.rows().length,100);const next=h.shell.querySelector('.cc-pagination a');
++  assert.equal(h.click(next).defaultPrevented,true);assert.equal(new URL(h.w.location.href).searchParams.get('page'),'2');assert.equal(h.rows().length,21);
++  assert.equal(h.api.query.get('source'),'synthetic');
++  const companySort=[...h.shell.querySelectorAll('.cc-sortable a')].find(a=>new URL(a.href).searchParams.get('sort')==='company');
++  assert.equal(h.click(companySort).defaultPrevented,true);assert.equal(h.api.query.get('direction'),'desc');assert.equal(h.api.query.has('page'),false);assert.equal(h.rows().length,100);
++  assert.equal(h.click(h.shell.querySelector('.cc-reset')).defaultPrevented,true);assert.equal(h.w.location.search,'?view=customers');assert.equal(h.api.query.has('source'),false);
++  assert.equal(h.calls.fetch,0);assert.deepEqual(h.errors,[]);
++ }finally{h.close();}
++});
++
++test('back and forward reread customer URLs without adding history or reinitializing the shell',async()=>{
++ const h=setup();try{
++  h.w.document.getElementById('customer-search').value='Needle';h.submit();
++  h.click(h.shell.querySelector('.cc-reset'));const length=h.w.history.length;
++  await historyMove(h,'back');assert.deepEqual(cellCompanies(h),['Needle Trading']);assert.equal(h.api.query.get('search'),'Needle');
++  await historyMove(h,'forward');assert.equal(h.rows().length,100);assert.equal(h.api.query.has('search'),false);
++  assert.equal(h.w.history.length,length);assert.equal(h.calls.push,2);assert.equal(h.w.document.getElementById('command-center-shell'),h.shell);assert.deepEqual(h.errors,[]);
++ }finally{h.close();}
++});
++
++test('modified clicks, downloads, other views, external origins and paths retain native behaviour',()=>{
++ const h=setup();try{
++  const before=h.main.innerHTML;
++  for(const props of [{ctrlKey:true},{metaKey:true},{shiftKey:true},{altKey:true},{button:1}]){
++   const e=h.click(h.shell.querySelector('.cc-reset'),props);assert.equal(e.defaultPrevented,false);
++  }
++  for(const [href,attrs] of [['https://outside.test/?view=customers',{}],['/elsewhere?view=customers',{}],['?view=customer&contact=synthetic',{}],['?view=workspace',{}],['?view=customers',{target:'_blank'}],['?view=customers',{download:'records.csv'}],['?view=customers#details',{}]]){
++   const a=h.w.document.createElement('a');a.className='cc-reset';a.href=href;Object.assign(a,attrs);h.main.appendChild(a);
++   assert.equal(h.click(a).defaultPrevented,false,href+' '+JSON.stringify(attrs));a.remove();
++  }
++  assert.equal(h.main.innerHTML,before);assert.equal(h.calls.push,0);assert.equal(h.calls.fetch,0);
++ }finally{h.close();}
++});
++
++test('same-page renders reuse memoized data and preserve outer controls and mutation observers',async()=>{
++ const h=setup();try{
++  let mutations=0;const observer=new h.w.MutationObserver(()=>mutations++);observer.observe(h.shell,{childList:true,subtree:true});
++  const memoized=h.api.customerRecords();h.w.document.getElementById('customer-search').value='Needle';h.submit();await Promise.resolve();
++  assert.equal(h.api.customerRecords(),memoized);assert.equal(memoized,h.records);assert.equal(JSON.stringify(h.records),h.before);
++  assert.equal(h.shell.querySelector('.cc-sidebar'),h.sidebar);assert.equal(h.shell.querySelector('.cc-rail'),h.rail);assert.equal(h.w.document.getElementById('retained-control'),h.control);
++  assert.ok(mutations>0);assert.equal(h.calls.fetch,0);observer.disconnect();assert.deepEqual(h.errors,[]);
++ }finally{h.close();}
++});
+diff --git a/web/command-center.js b/web/command-center.js
+index 521c589..9ea6b81 100644
+--- a/web/command-center.js
++++ b/web/command-center.js
+@@ -2232,7 +2232,7 @@
+     const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+     const page = Math.min(pages, Math.max(1, Number.parseInt(query.get('page'),10) || 1));
+     const rows = filtered.slice((page-1)*pageSize, page*pageSize);
+-    const pageHref = n => {const url=new URL(location.href);url.searchParams.set('page',n);return esc(url.href);};
++    const pageHref = n => {const url=new URL(location.href);url.search=query.toString();url.searchParams.set('page',n);return esc(url.href);};
+     const pagination = `<div class="cc-pagination"><span>第 ${page} / ${pages} 页 · 共 ${filtered.length} 条</span>${page>1?`<a href="${pageHref(page-1)}">上一页</a>`:''}${page<pages?`<a href="${pageHref(page+1)}">下一页</a>`:''}</div>`;
+     const sortHref = key => urlFor('customers', {
+       search: query.get('search') || '', platform, status, country, industry, source, touch,
+@@ -2708,6 +2708,41 @@
+     return `"${String(value == null ? '' : value).replace(/"/g, '""')}"`;
+   }
+ 
++  function navigateCustomers(target, push = true) {
++    if (view !== 'customers') return false;
++    const url = new URL(target, location.href);
++    const targetView = url.searchParams.get('view') || (url.hash === '#customers' ? 'customers' : '');
++    const main = document.getElementById('command-center-shell')?.querySelector('.cc-main');
++    if (!main || url.origin !== location.origin || url.pathname !== location.pathname
++        || targetView !== 'customers' || (url.hash && url.hash !== '#customers')) return false;
++    const previousQuery = query.toString();
++    const syncQuery = search => {
++      [...query.keys()].forEach(key => query.delete(key));
++      new URLSearchParams(search).forEach((value, key) => query.append(key, value));
++    };
++    syncQuery(url.search);
++    let html;
++    try {
++      html = customers();
++      if (push && url.href !== location.href) window.history.pushState(null, '', url.href);
++    } catch {
++      syncQuery(previousQuery);
++      return false;
++    }
++    main.innerHTML = html;
++    return true;
++  }
++  function installCustomerNavigation(shell) {
++    if (view !== 'customers') return;
++    shell.addEventListener('click', event => {
++      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++      const link = event.target?.closest?.('.cc-sortable a, .cc-pagination a, a.cc-reset');
++      if (!link || !shell.contains(link) || link.hasAttribute('download')
++          || (link.target && link.target.toLowerCase() !== '_self')) return;
++      if (navigateCustomers(link.href)) event.preventDefault();
++    });
++    window.addEventListener('popstate', () => navigateCustomers(location.href, false));
++  }
+   function applyCustomerFilters(event) {
+     event.preventDefault();
+     const values = {};
+@@ -2729,7 +2764,8 @@
+       if (value) values[key] = value;
+     });
+     values.direction = document.querySelector('.cc-filter-bar input[name="direction"]')?.value || 'desc';
+-    location.href = urlFor('customers', values);
++    const url = urlFor('customers', values);
++    if (!navigateCustomers(url)) location.href = url;
+   }
+   function exportCurrentReportCsv() {
+     if (!currentReport || !currentReport.hasData) return;
+@@ -2933,6 +2969,7 @@
+     shell.id = 'command-center-shell';
+     shell.innerHTML = `${nav()}<main class="cc-main">${(renderers[view] || workspace)()}</main>${rail()}`;
+     document.body.appendChild(shell);
++    installCustomerNavigation(shell);
+     document.body.classList.remove('command-center-booting');
+   } catch (error) {
+     console.error('Command center startup failed', error);
