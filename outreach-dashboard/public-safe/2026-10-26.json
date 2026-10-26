@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 3,
+  "dataDate": "2026-10-26",
+  "timezone": "Asia/Shanghai",
+  "goalStatus": "active",
+  "campaignTarget": 500,
+  "confirmedUniqueNewSendsInCampaign": 82,
+  "remainingInCampaign": 418,
+  "dailyTarget": 100,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 1,
+  "dailyRemaining": 99,
+  "countedChannelsInCurrentCampaign": {
+    "email": 74,
+    "linkedin": 8
+  },
+  "countedChannelsOnDataDate": {
+    "email": 0,
+    "linkedin": 1
+  },
+  "countingRule": "Unique new company/group with actual email receipt or independently reopened official LinkedIn outgoing message. Drafts, invites, follows, forms, unknown results, prior group contacts and permanent failures excluded.",
+  "deliveryStatus": "Persisted outgoing is not final inbox delivery or human response.",
+  "knownFailedDeliveryReceiptsExcluded": 8,
+  "priorGroupDuplicateReceiptsExcluded": 1,
+  "retainedExclusions": 9,
+  "replyRate": null,
+  "replyRateReason": "Incomplete inbox observation and response windows. No human reply-rate improvement established.",
+  "humanReplyImprovementProven": false,
+  "executionTransport": "Codex in-app browser",
+  "emailDispatchStatus": "globally_paused_pending_provider_diagnosis",
+  "globalEmailDispatchResumed": false,
+  "unattendedHostVerified": false,
+  "unknownSendAttemptsInCurrentCampaign": 0,
+  "copyPolicy": "Real company product/category reference, one primary question, optional15-minutevideo, approved3material links, optout.",
+  "dailyTerritoryVerification": "Actual fresh native metadata and bounded agency-table read on2026-10-26; contract dates control stale formula labels.",
+  "receiptConsistencyAudit": {
+    "campaignRows": 82,
+    "dailyRows": 1,
+    "allCampaignReceiptsExactlyOnceInBothStores": true,
+    "permanentRows": 2929,
+    "privateSiteRows": 2772,
+    "missingReceipts": 0,
+    "duplicateReceipts": 0,
+    "retainedExclusions": 9
+  },
+  "privateSystemPublication": {
+    "status": "succeeded",
+    "dataDate": "2026-10-26",
+    "exactSourceCommit": "224ab5769294be24a5ef3725d714c7f473e69da9",
+    "audienceUnchanged": "owner-private"
+  },
+  "validation": {
+    "currentReceiptAudit": "passed",
+    "currentTargetedContactRoleTest": {
+      "passed": 1,
+      "failed": 0,
+      "cancelled": 0,
+      "durationMs": 364326.5856,
+      "reason": "New concurrent owner role-verification code merged and target-tested once. Reused after credential renewal; not rerun per customer."
+    },
+    "build": "passed",
+    "archiveSourceLedgerRows": 2772,
+    "archiveSourceSemanticallyEqual": true
+  },
+  "privateCustomerDataIncluded": false,
+  "fullCustomerData": "Private local ledgers and unchanged owner-private system only. This anonymous aggregate contains no company identity, email, contact details or credentials.",
+  "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
+  "currentSynchronizationPurpose": "Incremental checkpoint for actual2026-10-26 data. Today's23:50AsiaShanghai scheduled sync not yet due.",
+  "previousDaySyncVerification": {
+    "dataDate": "2026-10-25",
+    "scheduledAtLocal": "2026-10-25T23:50:00+08:00",
+    "completionDuringScheduledWindowVerified": false,
+    "lateVerifiedAtUtc": "2026-10-26 05:43:49 UTC",
+    "unchangedExistingRemoteAggregateVerified": true,
+    "previousConfirmed": 81,
+    "previousDaily": 8,
+    "noDuplicateUnchangedCommit": true,
+    "qualification": "No evidence of an on-time23:50 execution retained. Current recovery independently verified existing prior-date immutable remote summary; no claim of on-time completion."
+  },
+  "latestVerifiedSynchronizationDelta": {
+    "previousCampaignCount": 81,
+    "currentCampaignCount": 82,
+    "newVerifiedCompanyReceipts": 1,
+    "actualExecutionDate": "2026-10-26",
+    "humanRepliesOrDeliveryClaimed": false
+  },
+  "dataIdentity": {
+    "dataDate": "2026-10-26",
+    "timezone": "Asia/Shanghai",
+    "campaignTarget": 500,
+    "campaignConfirmed": 82,
+    "campaignRemaining": 418,
+    "dailyTarget": 100,
+    "dailyConfirmed": 1,
+    "dailyRemaining": 99,
+    "knownDeliveryFailuresExcluded": 8,
+    "priorGroupDuplicatesExcluded": 1,
+    "campaignChannels": {
+      "email": 74,
+      "linkedin": 8
+    },
+    "dailyChannels": {
+      "email": 0,
+      "linkedin": 1
+    },
+    "globalEmailDispatchResumed": false,
+    "unattendedHostVerified": false
+  },
+  "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); no private rows or volatile timestamps",
+  "dataSummaryDigest": "a52330392bdb6fe8790494a262cbc3e75ff74bca45acef830c8e2baa25b96b54",
+  "verifiedAtUtc": "2026-10-26 05:43:49 UTC"
+}
