@@ -1,0 +1,47 @@
+diff --git a/docs/plans/2026-10-27-candidate-readiness-display.md b/docs/plans/2026-10-27-candidate-readiness-display.md
+new file mode 100644
+index 0000000..deea0ac
+--- /dev/null
++++ b/docs/plans/2026-10-27-candidate-readiness-display.md
+@@ -0,0 +1,13 @@
++# Candidate readiness display repair
++
++Goal: distinguish persisted candidates from actual send readiness without altering any outreach gate or receipt.
++
++Observed: the authenticated hosted workspace showed nine "可自动触达" candidates while its disabled execution button said "暂无待开发客户". Hosted execution is intentionally unavailable through that button; the current private research queue has zero ready sends. Browser reads and refreshed CRM access were healthy.
++
++Changes: label the workspace and queue as candidates awaiting verification; show an explicit Codex execution instruction on the hosted disabled button and its reason; explain the final live checks beside the queue. Preserve candidate selection, ICP, territory, history, unknown-send locks and disabled state.
++
++Verification: run existing queue guard, browser recovery, login and hosted boot regressions; build through the supported Sites source workflow; deploy owner-private; refresh actual workspace and queue to confirm the candidate count and disabled reason. No forced logout or test message. Record the actual result and publication provenance separately.
++
++Boundary: this display repair does not connect an unattended executor, extend cookies or restore a held delivery channel. Existing private receipts and anonymous statistics must remain unchanged.
++
++Independent review also confirmed that the intelligence panel's 23 planned actions are a 2026-09-02 snapshot. Display its original generatedAt and historical-suggestion labels; preserve the snapshot and do not imply a current plan or new verification.
+diff --git a/web/command-center.js b/web/command-center.js
+index 9ea6b81..6491ddb 100644
+--- a/web/command-center.js
++++ b/web/command-center.js
+@@ -2008 +2008,2 @@
+-      return `<section class="cc-panel"><div class="cc-panel-head"><div><h2>Autonomous Sales Intelligence</h2><span class="cc-sub">企业真值 · 永久防重 · 证据规划 · 结果学习</span></div><span class="cc-chip green">${esc(owner.phase || 'intelligence')}</span></div><div class="cc-panel-body"><div class="cc-funnel"><div><span>统一企业</span><b>${kpi.companies || 0}</b></div><div><span>永久抑制</span><b>${kpi.permanentlySuppressed || 0}</b></div><div><span>已验证渠道</span><b>${kpi.verifiedEvidenceRoutes || 0}</b></div><div><span>安全计划</span><b>${kpi.plannedActions || 0}</b></div></div><div class="cc-quality">老板摘要：${decisions.length} 个安全行动 · ${exceptions.length} 个系统例外；所有行动仍受 ICP、身份、防重与确认门禁约束。</div></div></section>`;
++      const snapshotAt = owner.generatedAt || latestIntelligence.generatedAt || '生成时间待核实';
++      return `<section class="cc-panel"><div class="cc-panel-head"><div><h2>Autonomous Sales Intelligence</h2><span class="cc-sub">历史规划快照 · ${esc(snapshotAt)}</span></div><span class="cc-chip">${esc(owner.phase || 'intelligence')}</span></div><div class="cc-panel-body"><div class="cc-funnel"><div><span>统一企业</span><b>${kpi.companies || 0}</b></div><div><span>永久抑制</span><b>${kpi.permanentlySuppressed || 0}</b></div><div><span>已验证渠道</span><b>${kpi.verifiedEvidenceRoutes || 0}</b></div><div><span>历史计划建议</span><b>${kpi.plannedActions || 0}</b></div></div><div class="cc-quality">历史建议 ${decisions.length} 项 · 历史例外 ${exceptions.length} 项。此快照不代表本轮就绪；执行前仍须重新核验 ICP、身份、区域和公司及集团历史。</div></div></section>`;
+@@ -2015 +2016 @@
+-      <a class="cc-kpi cc-kpi-link" href="${urlFor('queue', { queue: 'untouched' })}"><span>可自动触达</span><b>${untouched.length}</b></a>
++      <a class="cc-kpi cc-kpi-link" href="${urlFor('queue', { queue: 'untouched' })}"><span>待核验候选</span><b>${untouched.length}</b></a>
+@@ -2034 +2035 @@
+-      <section class="cc-panel"><div class="cc-panel-head"><h2>当前客户</h2><div class="cc-row-actions"><button class="primary" type="button" onclick="runGlmQueue()" ${!window.OUTREACH_HOSTED && eligibleCount ? '' : 'disabled'}>${eligibleCount ? '执行当前最高优先级客户' : '暂无待开发客户'}</button><span class="cc-chip green">${stateLabel(task.state)}</span></div></div><div class="cc-panel-body">
++      <section class="cc-panel"><div class="cc-panel-head"><h2>当前客户</h2><div class="cc-row-actions"><button class="primary" type="button" onclick="runGlmQueue()" ${!window.OUTREACH_HOSTED && eligibleCount ? '' : 'disabled'} title="${window.OUTREACH_HOSTED ? '候选须由 Codex 核验区域、公司及集团历史和实际联系渠道后执行；网页未连接自动发信执行器。' : eligibleCount ? '' : '候选仍需核验，或浏览器执行器尚未就绪。'}">${window.OUTREACH_HOSTED ? '请在 Codex 中执行' : eligibleCount ? '执行当前最高优先级客户' : '候选待核验 / 执行器未就绪'}</button><span class="cc-chip green">${stateLabel(task.state)}</span></div></div><div class="cc-panel-body">
+@@ -2063,2 +2064,2 @@
+-      ['potential', '\u53ef\u81ea\u52a8\u5f00\u53d1', visibleRows.length],
+-      ['untouched', '\u6267\u884c\u5b50\u96c6', executableDevelopmentTasks().length],
++      ['potential', '待核验候选', visibleRows.length],
++      ['untouched', '核验候选子集', executableDevelopmentTasks().length],
+@@ -2072,0 +2074 @@
++      <div class="cc-quality">候选数量不代表可立即发送；须重新核验区域、ICP、公司及集团历史与实际联系渠道，确认发送凭据后才计入已开发。</div>
+diff --git a/web/i18n.js b/web/i18n.js
+index 9b03411..3444987 100644
+--- a/web/i18n.js
++++ b/web/i18n.js
+@@ -22,0 +23,2 @@
++    '待核验候选':'Candidates awaiting verification','核验候选子集':'Candidate subset','请在 Codex 中执行':'Execute in Codex','候选待核验 / 执行器未就绪':'Verification or executor required','候选数量不代表可立即发送；须重新核验区域、ICP、公司及集团历史与实际联系渠道，确认发送凭据后才计入已开发。':'Candidate counts do not mean ready to send. Recheck territory, ICP, company/group history and the actual contact channel; count outreach only after verifying its send receipt.',
++    '历史规划快照':'Historical planning snapshot','历史计划建议':'Historical plan suggestions','生成时间待核实':'Generation time unverified',
