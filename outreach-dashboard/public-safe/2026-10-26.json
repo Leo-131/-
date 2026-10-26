@@ -4,18 +4,18 @@
   "timezone": "Asia/Shanghai",
   "goalStatus": "active",
   "campaignTarget": 500,
-  "confirmedUniqueNewSendsInCampaign": 83,
-  "remainingInCampaign": 417,
+  "confirmedUniqueNewSendsInCampaign": 84,
+  "remainingInCampaign": 416,
   "dailyTarget": 100,
-  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 2,
-  "dailyRemaining": 98,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 3,
+  "dailyRemaining": 97,
   "countedChannelsInCurrentCampaign": {
     "email": 74,
-    "linkedin": 9
+    "linkedin": 10
   },
   "countedChannelsOnDataDate": {
     "email": 0,
-    "linkedin": 2
+    "linkedin": 3
   },
   "countingRule": "Unique new company/group with actual email receipt or independently reopened official LinkedIn outgoing message. Drafts, invites, follows, forms, unknown results, prior group contacts and permanent failures excluded.",
   "deliveryStatus": "Persisted outgoing is not final inbox delivery or human response.",
@@ -33,11 +33,11 @@
   "copyPolicy": "Real company product/category reference, one primary question, optional15-minutevideo, approved3material links, optout.",
   "dailyTerritoryVerification": "Actual fresh native metadata and bounded agency-table read on2026-10-26; contract dates control stale formula labels.",
   "receiptConsistencyAudit": {
-    "campaignRows": 83,
-    "dailyRows": 2,
+    "campaignRows": 84,
+    "dailyRows": 3,
     "allCampaignReceiptsExactlyOnceInBothStores": true,
-    "permanentRows": 2930,
-    "privateSiteRows": 2773,
+    "permanentRows": 2931,
+    "privateSiteRows": 2774,
     "missingReceipts": 0,
     "duplicateReceipts": 0,
     "retainedExclusions": 9
@@ -45,7 +45,7 @@
   "privateSystemPublication": {
     "status": "succeeded",
     "dataDate": "2026-10-26",
-    "exactSourceCommit": "25be00193e9392ff0f1becbcee938f2f53208ef6",
+    "exactSourceCommit": "3da504f474d9782b23fd592761d145877f33aee6",
     "audienceUnchanged": "owner-private"
   },
   "validation": {
@@ -63,7 +63,7 @@
       "failed": 0
     },
     "build": "passed",
-    "archiveSourceLedgerRows": 2773,
+    "archiveSourceLedgerRows": 2774,
     "archiveSourceSemanticallyEqual": true,
     "productionSuppressionGuardBytesMatchBuiltArchive": true,
     "concurrentOwnerUpdates": "Retained normal fast-forward source changes; unchanged own targeted checks not repeated per customer. No claim of running a complete suite.",
@@ -80,12 +80,17 @@
       "failed": 0
     },
     "explicitDatedOutcomesPreserved": true,
-    "replyTimelineCodeMatchesArchive": true
+    "replyTimelineCodeMatchesArchive": true,
+    "currentLoginRecoveryTargetedRegression": {
+      "passed": 15,
+      "failed": 0,
+      "fullSuite": false
+    }
   },
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Private local ledgers and unchanged owner-private system only. This anonymous aggregate contains no company identity, email, contact details or credentials.",
   "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
-  "currentSynchronizationPurpose": "Code-only repair of dated reply/contact/opportunity timeline mapping;83campaign and2daily data checkpoint unchanged. Not the scheduled23:50AsiaShanghai synchronization.",
+  "currentSynchronizationPurpose": "Incremental verified new-company receipt and existing-customer application/follow-up evidence. Not the scheduled23:50AsiaShanghai synchronization.",
   "previousDaySyncVerification": {
     "dataDate": "2026-10-25",
     "scheduledAtLocal": "2026-10-25T23:50:00+08:00",
@@ -98,11 +103,11 @@
     "qualification": "No evidence of an on-time23:50 execution retained. Current recovery independently verified existing prior-date immutable remote summary; no claim of on-time completion."
   },
   "latestVerifiedSynchronizationDelta": {
-    "previousCampaignCount": 82,
-    "currentCampaignCount": 83,
+    "previousCampaignCount": 83,
+    "currentCampaignCount": 84,
     "newVerifiedCompanyReceipts": 1,
-    "newlyVerifiedHumanReplyCustomers": 1,
-    "newlyVerifiedPricingOrSampleRequestCustomers": 1,
+    "newlyVerifiedHumanReplyCustomers": 0,
+    "newlyVerifiedPricingOrSampleRequestCustomers": 0,
     "existingCustomerFollowupSentAndReopened": 1,
     "actualExecutionDate": "2026-10-26",
     "finalInboxDeliveryClaimed": false
@@ -111,32 +116,36 @@
     "dataDate": "2026-10-26",
     "timezone": "Asia/Shanghai",
     "campaignTarget": 500,
-    "campaignConfirmed": 83,
-    "campaignRemaining": 417,
+    "campaignConfirmed": 84,
+    "campaignRemaining": 416,
     "dailyTarget": 100,
-    "dailyConfirmed": 2,
-    "dailyRemaining": 98,
+    "dailyConfirmed": 3,
+    "dailyRemaining": 97,
     "knownDeliveryFailuresExcluded": 8,
     "priorGroupDuplicatesExcluded": 1,
     "campaignChannels": {
       "email": 74,
-      "linkedin": 9
+      "linkedin": 10
     },
     "dailyChannels": {
       "email": 0,
-      "linkedin": 2
+      "linkedin": 3
     },
     "globalEmailDispatchResumed": false,
     "unattendedHostVerified": false,
-    "newlyVerifiedHumanReplyCustomersInThisUpdate": 1,
-    "newlyVerifiedPricingOrSampleRequestCustomersInThisUpdate": 1
+    "newlyVerifiedHumanReplyCustomersInThisUpdate": 0,
+    "newlyVerifiedPricingOrSampleRequestCustomersInThisUpdate": 0,
+    "observedHumanReplyCustomersRecordedOnDataDate": 1,
+    "observedPricingOrSampleRequestCustomersRecordedOnDataDate": 1
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); no private rows or volatile timestamps",
-  "dataSummaryDigest": "f44a92e408753d06b76f3d0503c406fad6c6bd2c58bdfafd87a0a506dc06db6b",
-  "verifiedAtUtc": "2026-10-26T10:35:57.676Z",
-  "newlyVerifiedHumanReplyCustomersInThisUpdate": 1,
-  "newlyVerifiedPricingOrSampleRequestCustomersInThisUpdate": 1,
-  "publicationChangeType": "reply_timeline_code_fix_only",
-  "unchangedDataSummaryDigestSincePreviousPublication": true,
-  "newUniqueCompaniesInThisPublication": 0
+  "dataSummaryDigest": "127d548ae06adea3a9f324e750ef484601b2d0941c30a4fafd01050327b3dab7",
+  "verifiedAtUtc": "2026-10-26 11:14:57 UTC",
+  "newlyVerifiedHumanReplyCustomersInThisUpdate": 0,
+  "newlyVerifiedPricingOrSampleRequestCustomersInThisUpdate": 0,
+  "publicationChangeType": "verified_receipt_and_existing_customer_followup",
+  "unchangedDataSummaryDigestSincePreviousPublication": false,
+  "newUniqueCompaniesInThisPublication": 1,
+  "observedHumanReplyCustomersRecordedOnDataDate": 1,
+  "observedPricingOrSampleRequestCustomersRecordedOnDataDate": 1
 }
