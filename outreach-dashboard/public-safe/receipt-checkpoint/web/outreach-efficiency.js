@@ -113,9 +113,10 @@
     const seen = new Set(), cached = new Map(), rows = [], counts = {historical:0,duplicate:0,parked:0};
     const parked = new Set(['excluded','source_failed','evidence_insufficient','parked','identity_mismatch']);
     const outcomeBlocks = new Set(['sent_confirmed','submitted_confirmed','send_unconfirmed',
-      'send_clicked_outcome_unknown_do_not_resend','outcome_pending','replied','bounced']);
+      'send_clicked_outcome_unknown_do_not_resend','outcome_pending','replied','bounced',
+      'optout','opt_out','opted_out','unsubscribe','unsubscribed','do_not_contact','do_not_resend']);
     const statuses = row => [row.researchStatus,row.status,row.sendStatus,row.automationStatus,row.result,row.state]
-      .filter(value=>typeof value==='string').map(value=>value.trim().toLowerCase());
+      .filter(value=>typeof value==='string').map(value=>value.trim().toLowerCase().replace(/[\s-]+/g,'_'));
     const sources = row => new Set((row.evidenceSources || []).filter(url =>
       typeof url === 'string' && /^https?:\/\//i.test(url)));
     // Per-invocation snapshots: aliases share work, but later calls see new receipts.
@@ -124,7 +125,8 @@
       if (!metadata.has(row)) {
         const state = statuses(row);
         metadata.set(row, {identity:keys(row).filter(Boolean),
-          historical:state.some(status=>outcomeBlocks.has(status)),
+          historical:Boolean(row.doNotResend||row.previouslyContacted||row.sentAt||row.repliedAt)
+            ||state.some(status=>outcomeBlocks.has(status)),
           // Explicit cache no-retry flags also cover legacy custom status names.
           // Never infer eligibility from a name, a score, or a source URL alone.
           parked:row.retryWithoutNewEvidence===false || row.reResearchWithoutNewEvidence===false

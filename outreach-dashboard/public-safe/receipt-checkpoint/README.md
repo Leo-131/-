@@ -1,5 +1,7 @@
 # Receipt checkpoint recovery — safe source extract
 
+2026-10-26 update: the two suppression guards match private Site source commit `3d668d621ad9c680573b4232e7c1fdfeaa3abfd9`. Exact opt-out, unsubscribe and do-not-contact states stay locked across fresh research sources and company/group aliases. Case and separator normalization does not turn unrelated notes into suppression. Run `node --test tests/suppression-guard.test.mjs` for the standalone synthetic regression. No real customer data is included.
+
 Source: private Site commit `0ae1c012af7a9dfa50e835f526465d0263580d93`, 2026-10-25 Asia/Shanghai, including merge `c066bdbeedf138331ac8cc809cc9cc0bdd5ab6ba`. The merge preserves concurrent owner changes.
 
 This standalone pure-state extract contains no real customer identity, contact address, receipt ID, credential or customer ledger. All addresses and receipts in tests are explicitly synthetic `.test` fixtures, not outreach evidence.
