@@ -4,18 +4,18 @@
   "timezone": "Asia/Shanghai",
   "goalStatus": "active",
   "campaignTarget": 500,
-  "confirmedUniqueNewSendsInCampaign": 94,
-  "remainingInCampaign": 406,
+  "confirmedUniqueNewSendsInCampaign": 95,
+  "remainingInCampaign": 405,
   "dailyTarget": 100,
-  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 6,
-  "dailyRemaining": 94,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 7,
+  "dailyRemaining": 93,
   "countedChannelsInCurrentCampaign": {
-    "email": 77,
+    "email": 78,
     "linkedin": 10,
     "instagram": 7
   },
   "countedChannelsOnDataDate": {
-    "email": 3,
+    "email": 4,
     "linkedin": 0,
     "instagram": 3
   },
@@ -33,29 +33,29 @@
   "unattendedHostVerified": false,
   "dailyTerritoryVerification": "Actual fresh bounded agency-table read on2026-10-27; contract dates control over stale formula labels.",
   "receiptConsistencyAudit": {
-    "campaignRows": 94,
-    "dailyRows": 6,
+    "campaignRows": 95,
+    "dailyRows": 7,
     "allCampaignReceiptsExactlyOnceInBothStores": true,
-    "permanentRows": 2941,
-    "privateSiteRows": 2784,
+    "permanentRows": 2942,
+    "privateSiteRows": 2785,
     "missingReceipts": 0,
     "duplicateReceipts": 0,
     "retainedExclusions": 9,
     "previousPrivateRowsPreserved": true,
-    "previous93AndNineExclusionsPreserved": true
+    "previous94AndNineExclusionsPreserved": true
   },
   "privateSystemPublication": {
     "status": "succeeded",
     "dataDate": "2026-10-27",
     "audienceUnchanged": "owner-private",
     "verificationAuthority": "Controller-confirmed successful private publication and exact ledger readback; this public document contains only aggregate statistics.",
-    "campaignConfirmed": 94,
-    "exactSourceCommit": "d899fede7660f54215671c83bed8152dc22c14c9"
+    "campaignConfirmed": 95,
+    "exactSourceCommit": "b1d4a3d1a626d6fd50f247166c8b9724e8b93495"
   },
   "validation": {
     "localOriginalReceiptHelperAudit": "passed",
     "immutablePriorReceiptsAndExclusionsAudit": "passed",
-    "localAuditAtUtc": "2026-10-26T20:49:10.335Z",
+    "localAuditAtUtc": "2026-10-26T21:58:52.760Z",
     "fullSuiteRunForThisDataUpdate": false,
     "emailReceiptImageCompatibilityFocusedTests": {
       "passed": 24,
@@ -71,7 +71,7 @@
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Complete customer records remain in local private ledgers and the owner-private customer system. No customer identities, business contacts, message content or credentials are included.",
   "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
-  "currentSynchronizationPurpose": "Incremental anonymous statistics for the explicitly audited94-company checkpoint only. Not the2026-10-27 23:50AsiaShanghai scheduled synchronization.",
+  "currentSynchronizationPurpose": "Incremental anonymous statistics for the explicitly audited95-company checkpoint only. Not the2026-10-27 23:50AsiaShanghai scheduled synchronization.",
   "currentChannelRestrictions": {
     "email": "Partial delivery degradation remains under provider diagnosis; global dispatch resumption is not verified.",
     "linkedinNewPageConversations": "Provider quota restriction remains subject to current live verification.",
@@ -84,20 +84,20 @@
     "dataDate": "2026-10-27",
     "timezone": "Asia/Shanghai",
     "campaignTarget": 500,
-    "campaignConfirmed": 94,
-    "campaignRemaining": 406,
+    "campaignConfirmed": 95,
+    "campaignRemaining": 405,
     "dailyTarget": 100,
-    "dailyConfirmed": 6,
-    "dailyRemaining": 94,
+    "dailyConfirmed": 7,
+    "dailyRemaining": 93,
     "knownDeliveryFailuresExcluded": 8,
     "priorGroupDuplicatesExcluded": 1,
     "campaignChannels": {
-      "email": 77,
+      "email": 78,
       "linkedin": 10,
       "instagram": 7
     },
     "dailyChannels": {
-      "email": 3,
+      "email": 4,
       "linkedin": 0,
       "instagram": 3
     },
@@ -105,5 +105,5 @@
     "unattendedHostVerified": false
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); fixed field order, anonymous counts only; volatile timestamps excluded",
-  "dataSummaryDigest": "6bf3fb9cf4fc46af580020a3ff978f09283bc98a450910ab17467098d527b2ac"
+  "dataSummaryDigest": "1370461db81bab5b534aea9f672b149572aa912e3dc1fec887e7f5089cb665a6"
 }
