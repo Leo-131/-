@@ -5,8 +5,8 @@ import {JSDOM} from 'jsdom';
 
 const source=fs.readFileSync(new URL('../web/cloud-boot.js',import.meta.url),'utf8');
 const flush=async()=>{await new Promise(resolve=>setImmediate(resolve));};
-function setup({fetch,hang=null,optional=false,error=null,asset='/evidence.js'}={}){
- const dom=new JSDOM('<body class="command-center-booting"><script type="text/plain" data-hosted-script '+(optional?'data-optional ':'')+'src="'+asset+'"></script><script type="text/plain" data-hosted-script src="/command-center.js"></script></body>',{url:'https://workspace.test',runScripts:'outside-only'});
+function setup({fetch,hang=null,optional=false,error=null,asset='/evidence.js',scriptsHtml=null,execute=null,configure=null}={}){
+ const dom=new JSDOM('<body class="command-center-booting">'+(scriptsHtml??'<script type="text/plain" data-hosted-script '+(optional?'data-optional ':'')+'src="'+asset+'"></script><script type="text/plain" data-hosted-script src="/command-center.js"></script>')+'</body>',{url:'https://workspace.test',runScripts:'outside-only'});
  const w=dom.window,timers=new Map(),nodes=[],loaded=[];let id=0,installs=0,clock=0;
  w.setTimeout=(fn,delay)=>{timers.set(++id,{fn,delay,at:clock+delay});return id;};
  w.clearTimeout=key=>timers.delete(key);
@@ -16,8 +16,9 @@ function setup({fetch,hang=null,optional=false,error=null,asset='/evidence.js'}=
  w.Element.prototype.after=function(script){after.call(this,script);if(script.tagName!=='SCRIPT')return;
   nodes.push(script);const path=new URL(script.src).pathname;loaded.push(path);
   if(path===hang)return;
-  queueMicrotask(()=>path===error?script.onerror?.():script.onload?.());
+  queueMicrotask(()=>{if(path===error)script.onerror?.();else{execute?.(w,path);script.onload?.();}});
  };
+ configure?.(w);
  w.eval(source);
  return {dom,w,timers,nodes,loaded,get installs(){return installs;},
   async tick(ms){const target=clock+ms;await flush();
@@ -137,5 +138,52 @@ test('a large permanent ledger cannot become optional through a data attribute',
   await h.tick(7000);assert.equal(h.w.document.querySelector('.hosted-error'),null);
   await h.tick(20000);assert.ok(h.w.document.querySelector('.hosted-error'));assert.equal(h.installs,0);
   assert.deepEqual(h.loaded,[file]);assert.equal(h.w.__outreachBootWarnings,undefined);assert.equal(h.timers.size,0);
+ }finally{h.close();}
+});
+
+const fixtureHash='a'.repeat(64);
+const chunkHtml=(index,end,total=2,count=2)=>'<script type="text/plain" data-hosted-script data-progress-file="autonomous-outreach-results.js" data-record-hash="'+fixtureHash+'" data-record-chunk="'+index+'" data-record-chunks="'+count+'" data-record-end="'+end+'" data-record-total="'+total+'" src="/generated-data/test/part-'+index+'.js"></script>';
+const twoChunks=chunkHtml(0,1)+chunkHtml(1,2)+'<script type="text/plain" data-hosted-script src="/command-center.js"></script>';
+const executeChunk=(w,path)=>{if(path.endsWith('part-0.js')){w.AUTONOMOUS_OUTREACH_RESULTS=[{id:1}];w.__outreachLedgerChunkState={hash:fixtureHash,index:0,rows:1};}if(path.endsWith('part-1.js')){w.AUTONOMOUS_OUTREACH_RESULTS.push({id:2});w.__outreachLedgerChunkState={hash:fixtureHash,index:1,rows:2};}};
+test('all required chunks must execute in order before installing controls',async()=>{
+ const h=setup({scriptsHtml:twoChunks,execute:executeChunk});try{
+  await flush();assert.equal(h.installs,1);assert.equal(JSON.stringify(h.w.AUTONOMOUS_OUTREACH_RESULTS),JSON.stringify([{id:1},{id:2}]));
+  assert.deepEqual(h.loaded,['/generated-data/test/part-0.js','/generated-data/test/part-1.js','/command-center.js']);assert.equal(h.timers.size,0);
+ }finally{h.close();}
+});
+test('a newer desktop ledger skips all baseline chunk preloads and injections and is assigned once',async()=>{
+ let assignments=0,value;const newer=[{id:'new-1'},{id:'new-2'},{id:'new-3'}];
+ const h=setup({scriptsHtml:twoChunks,execute:executeChunk,configure:w=>Object.defineProperty(w,'AUTONOMOUS_OUTREACH_RESULTS',{configurable:true,get:()=>value,set:v=>{assignments++;value=v;}}),fetch:async url=>({ok:true,json:async()=>url==='/api/state'?{ok:true}:url==='/api/progress'?{files:{'autonomous-outreach-results.js':{source:'desktop'}}}:{ok:true,data:newer}})});try{
+  await flush();assert.equal(h.installs,1);assert.equal(assignments,1);assert.deepEqual(value,newer);assert.deepEqual(h.loaded,['/command-center.js']);
+  assert.equal([...h.w.document.querySelectorAll('link[rel="preload"]')].some(link=>link.href.includes('/generated-data/')),false);assert.equal(h.timers.size,0);
+ }finally{h.close();}
+});
+test('a missing required chunk fails closed and late load cannot continue or duplicate controls',async()=>{
+ const h=setup({scriptsHtml:twoChunks,execute:executeChunk,hang:'/generated-data/test/part-1.js'});try{
+  await flush();const load=h.nodes[1].onload,error=h.nodes[1].onerror;
+  await h.tick(30000);assert.equal(h.installs,0);assert.ok(h.w.document.querySelector('.hosted-error'));
+  executeChunk(h.w,'/generated-data/test/part-1.js');load();error();await flush();
+  assert.equal(h.installs,0);assert.deepEqual(h.loaded,['/generated-data/test/part-0.js','/generated-data/test/part-1.js']);assert.equal(h.timers.size,0);
+ }finally{h.close();}
+});
+test('an empty successful chunk load is not proof that its records executed',async()=>{
+ const h=setup({scriptsHtml:twoChunks});try{
+  await flush();assert.equal(h.installs,0);assert.ok(h.w.document.querySelector('.hosted-error'));
+  assert.deepEqual(h.loaded,['/generated-data/test/part-0.js']);assert.equal(h.timers.size,0);
+ }finally{h.close();}
+});
+test('an absent final placeholder cannot silently accept a partial ledger',async()=>{
+ const h=setup({scriptsHtml:chunkHtml(0,1)+'<script type="text/plain" data-hosted-script src="/command-center.js"></script>',execute:executeChunk});try{
+  await flush();assert.equal(h.installs,0);assert.ok(h.w.document.querySelector('.hosted-error'));assert.deepEqual(h.loaded,[]);
+ }finally{h.close();}
+});
+test('a preexisting array of the right size cannot substitute for a real chunk execution marker',async()=>{
+ const h=setup({scriptsHtml:twoChunks,configure:w=>{w.AUTONOMOUS_OUTREACH_RESULTS=[{id:'stale'}];}});try{
+  await flush();assert.equal(h.installs,0);assert.ok(h.w.document.querySelector('.hosted-error'));assert.deepEqual(h.loaded,['/generated-data/test/part-0.js']);
+ }finally{h.close();}
+});
+test('a malformed desktop ledger fails without loading any baseline chunks',async()=>{
+ const h=setup({scriptsHtml:twoChunks,fetch:async url=>({ok:true,json:async()=>url==='/api/state'?{ok:true}:url==='/api/progress'?{files:{'autonomous-outreach-results.js':{source:'desktop'}}}:{ok:true,data:{records:[]}}})});try{
+  await flush();assert.equal(h.installs,0);assert.ok(h.w.document.querySelector('.hosted-error'));assert.deepEqual(h.loaded,[]);assert.equal(h.timers.size,0);
  }finally{h.close();}
 });

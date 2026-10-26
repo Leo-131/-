@@ -1,5 +1,5 @@
 (async function(){
-  const messages={request_timeout:'页面数据读取超时，请检查网络后重试。',state_unavailable:'在线存储未就绪，请稍后重试。',progress_unavailable:'新进度暂不可用，请稍后重试。',script_timeout:'必需页面资源加载超时，请检查网络后重试。',script_load_failed:'必需页面资源加载失败，请稍后重试。'};
+  const messages={request_timeout:'页面数据读取超时，请检查网络后重试。',state_unavailable:'在线存储未就绪，请稍后重试。',progress_unavailable:'新进度暂不可用，请稍后重试。',script_timeout:'必需页面资源加载超时，请检查网络后重试。',script_load_failed:'必需页面资源加载失败，请稍后重试。',script_data_invalid:'客户记录分段不完整，请重新加载。'};
   const bootError=code=>Object.assign(new Error(messages[code]),{code});
   // Required data assets keep an explicit, finite budget; they never become optional.
   const largeRequiredData=new Set(['autonomous-outreach-results.js','outreach-intelligence-latest.js']);
@@ -18,8 +18,16 @@
   }
   try{
     const scripts=[...document.querySelectorAll('script[data-hosted-script]')];
-    // Fetch independent assets together while preserving their execution order.
-    for(const original of scripts)if(original.src){const link=document.createElement('link');link.rel='preload';link.as='script';link.href=original.src;document.head.append(link);}
+    const sourceFile=original=>original.getAttribute('data-progress-file')||(original.src?new URL(original.src).pathname.slice(1):'');
+    const chunkGroups=new Map(),chunkMetadata=new Map();
+    for(const original of scripts)if(original.hasAttribute('data-progress-file')){
+      const file=sourceFile(original),hash=original.getAttribute('data-record-hash');
+      const read=name=>{const value=original.getAttribute(name);return /^\d+$/.test(value??'')?Number(value):NaN;};
+      const metadata={file,hash,index:read('data-record-chunk'),count:read('data-record-chunks'),end:read('data-record-end'),total:read('data-record-total')};
+      if(file!=='autonomous-outreach-results.js'||!original.src||!/^[a-f0-9]{64}$/.test(hash??'')||![metadata.index,metadata.count,metadata.end,metadata.total].every(Number.isSafeInteger)||metadata.count<1||metadata.index>=metadata.count||metadata.end>metadata.total)throw bootError('script_data_invalid');
+      const group=chunkGroups.get(file)||[];group.push(metadata);chunkGroups.set(file,group);chunkMetadata.set(original,metadata);
+    }
+    for(const group of chunkGroups.values())if(group.length!==group[0].count||group.some((part,index)=>part.index!==index||part.count!==group.length||part.hash!==group[0].hash||part.total!==group[0].total||(index&&part.end<=group[index-1].end))||group.at(-1).end!==group[0].total)throw bootError('script_data_invalid');
     const [stateResult,progressResult]=await Promise.all([
       readJson('/api/state'),
       readJson('/api/progress').catch(()=>null)
@@ -37,15 +45,23 @@
       overrides.set(file,data.data);
     }));
     if(overrides.has('public/outreach_data.json'))window.OUTREACH_SHEET_DATA=overrides.get('public/outreach_data.json');
+    // Resolve newer desktop data before requesting baseline chunks, then execute in order.
+    for(const original of scripts)if(original.src&&!overrides.has(sourceFile(original))){const link=document.createElement('link');link.rel='preload';link.as='script';link.href=original.src;document.head.append(link);}
+    const appliedOverrides=new Set();
     for(const original of scripts){
       const file=original.src?new URL(original.src).pathname.slice(1):'';
-      if(overrides.has(file)&&globals[file]){window[globals[file]]=overrides.get(file);continue;}
+      const identity=sourceFile(original),chunk=chunkMetadata.get(original);
+      if(overrides.has(identity)&&globals[identity]){
+        if(chunk&&!Array.isArray(overrides.get(identity)))throw bootError('script_data_invalid');
+        if(!appliedOverrides.has(identity)){window[globals[identity]]=overrides.get(identity);appliedOverrides.add(identity);}continue;
+      }
       await new Promise((resolve,reject)=>{
         const script=document.createElement('script');
-        const largeRequired=largeRequiredData.has(file);
+        const largeRequired=largeRequiredData.has(identity);
         const optional=original.hasAttribute('data-optional')&&!largeRequired;
         const deadlineMs=largeRequired?30000:optional?3000:10000;let settled=false,timer;
         const finish=code=>{
+          if(!settled&&!code&&chunk){const state=window.__outreachLedgerChunkState;if(!Array.isArray(window.AUTONOMOUS_OUTREACH_RESULTS)||window.AUTONOMOUS_OUTREACH_RESULTS.length!==chunk.end||state?.hash!==chunk.hash||state?.index!==chunk.index||state?.rows!==chunk.end)code='script_data_invalid';}
           if(settled)return;settled=true;clearTimeout(timer);script.onload=null;script.onerror=null;
           if(code){
             // Removing a node is cleanup, not proof that network/script execution stopped.

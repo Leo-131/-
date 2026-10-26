@@ -1,0 +1,33 @@
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+index 5c270c9..6c02158 100644
+--- a/scripts/build.mjs
++++ b/scripts/build.mjs
+@@ -3,6 +3,7 @@ import path from 'node:path';
+ import crypto from 'node:crypto';
+ import { progressFiles, latestDate } from '../server/progress.mjs';
+ import { copyTree } from './copy-tree.mjs';
++import { createLedgerChunks, replaceLedgerPlaceholder, writeLedgerChunks } from './ledger-chunks.mjs';
+ const root=process.cwd();
+ for(const p of ['dist/client','dist/server','dist/.openai']) fs.mkdirSync(path.join(root,p),{recursive:true});
+ copyTree(path.join(root,'web'),path.join(root,'dist/client'));
+@@ -10,15 +11,20 @@ fs.copyFileSync(path.join(root,'web/outreach-dashboard.html'),path.join(root,'di
+ fs.copyFileSync(path.join(root,'server/worker.mjs'),path.join(root,'dist/server/index.js'));
+ for(const file of ['state-merge.mjs','progress.mjs','model-router.mjs','browser-recovery.mjs','browser-recovery-executor.mjs','execution-resilience.mjs','access.mjs','backups.mjs','development-tasks.mjs','ai-company-bridge.mjs','task-mcp.mjs'])fs.copyFileSync(path.join(root,'server',file),path.join(root,'dist/server',file));
+ const baseline={};
++let ledger;
+ for(const [file,global] of Object.entries(progressFiles)){
+  const filename=path.join(root,'web',file);if(!fs.existsSync(filename))continue;
+  const source=fs.readFileSync(filename,'utf8');
+  const match=source.match(new RegExp('^\\s*window\\.'+global+'\\s*=\\s*([\\s\\S]*?)\\s*;?\\s*$'));
+  if(!match)continue;
+  try{const data=JSON.parse(match[1]);const compact=JSON.stringify(data);baseline[file]={hash:crypto.createHash('sha256').update(compact).digest('hex'),date:latestDate(data),source:'baseline'};
++ if(file==='autonomous-outreach-results.js')ledger=data;
+  fs.writeFileSync(path.join(root,'dist/client',file),'window.'+global+'='+compact+';');
+  }catch{}
+ }
++const chunks=createLedgerChunks(ledger);
++writeLedgerChunks(path.join(root,'dist/client'),chunks);
++for(const file of ['index.html','outreach-dashboard.html']){const filename=path.join(root,'dist/client',file);fs.writeFileSync(filename,replaceLedgerPlaceholder(fs.readFileSync(filename,'utf8'),chunks));}
+ fs.writeFileSync(path.join(root,'dist/client/progress-baseline.json'),JSON.stringify(baseline));
+ fs.copyFileSync(path.join(root,'.openai/hosting.json'),path.join(root,'dist/.openai/hosting.json'));
+ copyTree(path.join(root,'drizzle'),path.join(root,'dist/.openai/drizzle'));

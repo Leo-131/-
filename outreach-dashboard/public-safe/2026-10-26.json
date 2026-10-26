@@ -45,7 +45,7 @@
   "privateSystemPublication": {
     "status": "succeeded",
     "dataDate": "2026-10-26",
-    "exactSourceCommit": "61ed085574dad63336a4eb182cc7c9f62b1bcac8",
+    "exactSourceCommit": "7f15fefd90c69d8401abf3a2a9bcb665a35ef0b9",
     "audienceUnchanged": "owner-private"
   },
   "validation": {
@@ -87,18 +87,29 @@
       "fullSuite": false
     },
     "requiredDataStartupFocusedTests": {
-      "passed": 18,
+      "passed": 32,
       "failed": 0,
       "fullSuite": false,
-      "slowAndTerminalDeadlinesVerified": true,
-      "lateCallbacksCannotResumeOrDuplicate": true
+      "fullOrderedLedgerSemantics": true,
+      "desktopOverridePrecedence": true,
+      "missingEmptyAndLateChunksFailClosed": true,
+      "safeGeneratedArtifactCleanup": true
     },
-    "startupLoaderBytesMatchArchive": true
+    "startupLoaderBytesMatchArchive": true,
+    "startupRuntimeAcceptance": {
+      "authenticated": true,
+      "requiredChunkScriptsLoaded": 32,
+      "baselineRowsPreserved": 2774,
+      "customerTableUsable": true,
+      "latestOutgoingRecordVisible": true,
+      "errorPanels": 0,
+      "unattendedExecutionClaimed": false
+    }
   },
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Private local ledgers and unchanged owner-private system only. This anonymous aggregate contains no company identity, email, contact details or credentials.",
   "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
-  "currentSynchronizationPurpose": "Code-only bounded startup budget repair;84campaign and3daily checkpoint unchanged. Not scheduled23:50AsiaShanghai synchronization.",
+  "currentSynchronizationPurpose": "Code-only complete-ledger chunked startup repair;84campaign and3daily checkpoint unchanged. Not scheduled23:50AsiaShanghai synchronization.",
   "previousDaySyncVerification": {
     "dataDate": "2026-10-25",
     "scheduledAtLocal": "2026-10-25T23:50:00+08:00",
@@ -148,10 +159,10 @@
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); no private rows or volatile timestamps",
   "dataSummaryDigest": "127d548ae06adea3a9f324e750ef484601b2d0941c30a4fafd01050327b3dab7",
-  "verifiedAtUtc": "2026-10-26 11:28:57 UTC",
+  "verifiedAtUtc": "2026-10-26 11:41:55 UTC",
   "newlyVerifiedHumanReplyCustomersInThisUpdate": 0,
   "newlyVerifiedPricingOrSampleRequestCustomersInThisUpdate": 0,
-  "publicationChangeType": "required_data_boot_budget_code_fix_only",
+  "publicationChangeType": "complete_ledger_chunked_startup_code_fix_only",
   "unchangedDataSummaryDigestSincePreviousPublication": true,
   "newUniqueCompaniesInThisPublication": 0,
   "observedHumanReplyCustomersRecordedOnDataDate": 1,
