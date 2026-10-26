@@ -4,20 +4,20 @@
   "timezone": "Asia/Shanghai",
   "goalStatus": "active",
   "campaignTarget": 500,
-  "confirmedUniqueNewSendsInCampaign": 86,
-  "remainingInCampaign": 414,
+  "confirmedUniqueNewSendsInCampaign": 88,
+  "remainingInCampaign": 412,
   "dailyTarget": 100,
-  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 5,
-  "dailyRemaining": 95,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 7,
+  "dailyRemaining": 93,
   "countedChannelsInCurrentCampaign": {
     "email": 74,
     "linkedin": 10,
-    "instagram": 2
+    "instagram": 4
   },
   "countedChannelsOnDataDate": {
     "email": 0,
     "linkedin": 3,
-    "instagram": 2
+    "instagram": 4
   },
   "countingRule": "Unique new company/group with actual email receipt or independently reopened official LinkedIn/Instagram outgoing message. Drafts, invites, opened conversations, follows, forms, unknown results, prior group contacts and permanent failures excluded.",
   "deliveryStatus": "Persisted outgoing is not final inbox delivery or human response.",
@@ -25,7 +25,7 @@
   "priorGroupDuplicateReceiptsExcluded": 1,
   "retainedExclusions": 9,
   "replyRate": null,
-  "replyRateReason": "Earlier verified human pricing/sample request remains recorded; no additional human reply was verified in this update. Sent-cohort observation is incomplete and formal reply rate remains null.",
+  "replyRateReason": "No additional human reply verified in this update. Sent-cohort observation remains incomplete; a provider delivered badge cannot overrule a later explicit terminal DSN. Formal reply rate remains null.",
   "humanReplyImprovementProven": false,
   "executionTransport": "Codex in-app browser",
   "emailDispatchStatus": "globally_paused_pending_provider_diagnosis",
@@ -35,11 +35,11 @@
   "copyPolicy": "Real company product/category reference, one primary question, optional15-minutevideo, approved3material links, optout.",
   "dailyTerritoryVerification": "Actual fresh native metadata and bounded agency-table read on2026-10-26; contract dates control stale formula labels.",
   "receiptConsistencyAudit": {
-    "campaignRows": 86,
-    "dailyRows": 5,
+    "campaignRows": 88,
+    "dailyRows": 7,
     "allCampaignReceiptsExactlyOnceInBothStores": true,
-    "permanentRows": 2933,
-    "privateSiteRows": 2776,
+    "permanentRows": 2935,
+    "privateSiteRows": 2778,
     "missingReceipts": 0,
     "duplicateReceipts": 0,
     "retainedExclusions": 9
@@ -47,11 +47,11 @@
   "privateSystemPublication": {
     "status": "succeeded",
     "dataDate": "2026-10-26",
-    "exactSourceCommit": "a2603627a7343235c66b5aff145323ef8928844c",
+    "exactSourceCommit": "905adbdde397e0110a43ea27510e76b61e5116d3",
     "audienceUnchanged": "owner-private"
   },
   "validation": {
-    "currentReceiptAudit": "passed",
+    "currentReceiptAudit": "passed_original_helpers_and_previous86_plus9_exclusions_digest",
     "targetedPrivateGuardTests": {
       "passed": 23,
       "failed": 0
@@ -65,7 +65,7 @@
       "failed": 0
     },
     "build": "passed",
-    "archiveSourceLedgerRows": 2776,
+    "archiveSourceLedgerRows": 2778,
     "archiveSourceSemanticallyEqual": true,
     "productionSuppressionGuardBytesMatchBuiltArchive": true,
     "concurrentOwnerUpdates": "Retained normal fast-forward source changes; unchanged own targeted checks not repeated per customer. No claim of running a complete suite.",
@@ -133,7 +133,8 @@
       "failed": 0,
       "fullSuite": false,
       "scope": "Customer same-document filters/history/state/typography/numeric contract; baseline old navigation failed5 of6 new behavior checks."
-    }
+    },
+    "currentUpdateTestScope": "Data-only receipt append; unchanged code not retested. Original strict helper audit, image hashes, build and production data checks used."
   },
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Private local ledgers and unchanged owner-private system only. This anonymous aggregate contains no company identity, email, contact details or credentials.",
@@ -144,7 +145,6 @@
     "email": "paused_pending_provider_diagnosis",
     "facebook": "authenticated_history_scope_unverified",
     "independentResearch": "active",
-    "newSendsDuringThisCodeRepair": 1,
     "instagram": "existing_business_account_and_official_conversation_verified; one actual Send independently reopened and permanently recorded"
   },
   "previousDaySyncVerification": {
@@ -159,9 +159,9 @@
     "qualification": "No evidence of an on-time23:50 execution retained. Current recovery independently verified existing prior-date immutable remote summary; no claim of on-time completion."
   },
   "latestVerifiedSynchronizationDelta": {
-    "previousCampaignCount": 85,
-    "currentCampaignCount": 86,
-    "newVerifiedCompanyReceipts": 1,
+    "previousCampaignCount": 86,
+    "currentCampaignCount": 88,
+    "newVerifiedCompanyReceipts": 2,
     "newlyVerifiedHumanReplyCustomers": 0,
     "newlyVerifiedPricingOrSampleRequestCustomers": 0,
     "existingCustomerFollowupSentAndReopened": 0,
@@ -172,22 +172,22 @@
     "dataDate": "2026-10-26",
     "timezone": "Asia/Shanghai",
     "campaignTarget": 500,
-    "campaignConfirmed": 86,
-    "campaignRemaining": 414,
+    "campaignConfirmed": 88,
+    "campaignRemaining": 412,
     "dailyTarget": 100,
-    "dailyConfirmed": 5,
-    "dailyRemaining": 95,
+    "dailyConfirmed": 7,
+    "dailyRemaining": 93,
     "knownDeliveryFailuresExcluded": 8,
     "priorGroupDuplicatesExcluded": 1,
     "campaignChannels": {
       "email": 74,
       "linkedin": 10,
-      "instagram": 2
+      "instagram": 4
     },
     "dailyChannels": {
       "email": 0,
       "linkedin": 3,
-      "instagram": 2
+      "instagram": 4
     },
     "globalEmailDispatchResumed": false,
     "unattendedHostVerified": false,
@@ -197,14 +197,30 @@
     "observedPricingOrSampleRequestCustomersRecordedOnDataDate": 1
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); no private rows or volatile timestamps",
-  "dataSummaryDigest": "faa1e6066d35990985b7e64b87534ebdf643627ec3f58dc0f4e3d8a0ebc88455",
-  "verifiedAtUtc": "2026-10-26T14:49:44.516Z",
+  "dataSummaryDigest": "c3d8e2cb0b7837dd06529c4f2375c845d9fee854e02a793fd83b8ff26d8aa7c2",
+  "verifiedAtUtc": "2026-10-26T15:52:14.472Z",
   "newlyVerifiedHumanReplyCustomersInThisUpdate": 0,
   "newlyVerifiedPricingOrSampleRequestCustomersInThisUpdate": 0,
-  "publicationChangeType": "same_document_customer_filter_navigation_and_independent_verified_social_send",
+  "publicationChangeType": "two_verified_social_sends_and_scheduled_daily_sync",
   "unchangedDataSummaryDigestSincePreviousPublication": false,
-  "newUniqueCompaniesInThisPublication": 1,
+  "newUniqueCompaniesInThisPublication": 2,
   "observedHumanReplyCustomersRecordedOnDataDate": 1,
   "observedPricingOrSampleRequestCustomersRecordedOnDataDate": 1,
-  "newlyObservedUnclassifiedAcknowledgements": 0
+  "newlyObservedUnclassifiedAcknowledgements": 0,
+  "currentUpdate": {
+    "newVerifiedSocialSends": 2,
+    "rawFreeLookupMetadataRows": 408,
+    "paidProviderRequests": 0,
+    "originalReceiptAndExclusionAuditPassed": true,
+    "providerDeliveredBadgeContradictedByTerminalDsn": true,
+    "globalEmailDispatchResumed": false,
+    "sourceCodeChanged": false
+  },
+  "dailyScheduledSync": {
+    "dataDate": "2026-10-26",
+    "timezone": "Asia/Shanghai",
+    "startedAtUtc": "2026-10-26T15:50:16Z",
+    "startObservedWithinScheduledMinute": true,
+    "remoteVerification": "Stored separately after actual remote commit/blob/date verification; no local-save success claim."
+  }
 }
