@@ -45,7 +45,7 @@
   "privateSystemPublication": {
     "status": "succeeded",
     "dataDate": "2026-10-26",
-    "exactSourceCommit": "7f15fefd90c69d8401abf3a2a9bcb665a35ef0b9",
+    "exactSourceCommit": "fb9bf8cfd09fab14e0a68a28cc22047d42015651",
     "audienceUnchanged": "owner-private"
   },
   "validation": {
@@ -96,6 +96,14 @@
       "safeGeneratedArtifactCleanup": true
     },
     "startupLoaderBytesMatchArchive": true,
+    "currentCheckpointMetadataRegression": {
+      "passed": 73,
+      "failed": 0,
+      "fullSuite": false,
+      "priorDateAndCommitAliasFaultReproducedBeforeFix": true,
+      "countsAndExclusionsUnchanged": true,
+      "remoteCoverageStillRequiresMatchingReceiptDigest": true
+    },
     "startupRuntimeAcceptance": {
       "authenticated": true,
       "requiredChunkScriptsLoaded": 32,
@@ -109,7 +117,14 @@
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Private local ledgers and unchanged owner-private system only. This anonymous aggregate contains no company identity, email, contact details or credentials.",
   "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
-  "currentSynchronizationPurpose": "Code-only complete-ledger chunked startup repair;84campaign and3daily checkpoint unchanged. Not scheduled23:50AsiaShanghai synchronization.",
+  "currentSynchronizationPurpose": "Current execution-date and synchronization-alias reconciliation code repair;84campaign and3daily checkpoint unchanged. Safe code and anonymous statistics only; not scheduled23:50AsiaShanghai synchronization.",
+  "currentChannelRestrictions": {
+    "linkedinNewPageConversations": "rate_limited_by_provider; no retry time supplied",
+    "email": "paused_pending_provider_diagnosis",
+    "facebook": "authenticated_history_scope_unverified",
+    "independentResearch": "active",
+    "newSendsDuringThisCodeRepair": 0
+  },
   "previousDaySyncVerification": {
     "dataDate": "2026-10-25",
     "scheduledAtLocal": "2026-10-25T23:50:00+08:00",
@@ -159,10 +174,10 @@
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); no private rows or volatile timestamps",
   "dataSummaryDigest": "127d548ae06adea3a9f324e750ef484601b2d0941c30a4fafd01050327b3dab7",
-  "verifiedAtUtc": "2026-10-26 11:41:55 UTC",
+  "verifiedAtUtc": "2026-10-26T12:54:30.666985Z",
   "newlyVerifiedHumanReplyCustomersInThisUpdate": 0,
   "newlyVerifiedPricingOrSampleRequestCustomersInThisUpdate": 0,
-  "publicationChangeType": "complete_ledger_chunked_startup_code_fix_only",
+  "publicationChangeType": "checkpoint_current_date_and_sync_alias_code_repair",
   "unchangedDataSummaryDigestSincePreviousPublication": true,
   "newUniqueCompaniesInThisPublication": 0,
   "observedHumanReplyCustomersRecordedOnDataDate": 1,

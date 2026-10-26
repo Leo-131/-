@@ -1,0 +1,83 @@
+diff --git a/docs/plans/2026-10-26-checkpoint-current-metadata.md b/docs/plans/2026-10-26-checkpoint-current-metadata.md
+new file mode 100644
+index 0000000..f8b3268
+--- /dev/null
++++ b/docs/plans/2026-10-26-checkpoint-current-metadata.md
+@@ -0,0 +1,14 @@
++# Current checkpoint metadata repair
++
++**Goal:** Prevent receipt reconciliation from retaining an obsolete execution date or obsolete synchronization aliases.
++
++**Architecture:** Keep the existing pure checkpoint reconciler and all receipt/digest gates. Derive the current audit date from the validated daily ledger. Normalize source and remote commit aliases from the current synchronization snapshot, retaining compatibility with older snapshot formats. Never infer a successful deployment or delivery from these metadata fields.
++
++**Scope:** `scripts/campaign-checkpoint-state.mjs` and focused synthetic regressions in `tests/campaign-checkpoint-state.test.mjs`. Historical evidence and real campaign receipts stay unchanged.
++
++1. Add regressions for an obsolete audit date and new-format synchronization keys conflicting with historical aliases; verify they fail.
++2. Prefer the current snapshot's canonical commit keys and normalize legacy aliases consistently; update only the audit execution date from the validated daily date.
++3. Run the checkpoint and receipt-generator tests. Validate real campaign/daily/continuation reconciliation read-only without changing any receipt or exclusions.
++4. Apply separately reviewed private metadata corrections backed by the verified 84-receipt proof. Publish exact source and anonymous safe-code synchronization, preserving the existing owner-private audience.
++
++No new send, daemon, credential, mailbox-health or authentication-restoration claim is authorized by this repair. A changed receipt digest still invalidates current remote coverage.
+diff --git a/scripts/campaign-checkpoint-state.mjs b/scripts/campaign-checkpoint-state.mjs
+index decb21d..331aec3 100644
+--- a/scripts/campaign-checkpoint-state.mjs
++++ b/scripts/campaign-checkpoint-state.mjs
+@@ -35,6 +35,14 @@ function sameReceipt(left,right){
+ }
+ function snapshotSynchronization(previous,prior){
+  const sync={...(previous||{})};
++ // New snapshots use explicit commit keys. Normalize legacy aliases from that
++ // same snapshot so an older campaign alias cannot describe a newer proof.
++ const source=sync.sourceCommit??sync.source??sync.privateSourceSha;
++ const remote=sync.remoteCommit??sync.github??sync.githubSha;
++ const deployment=sync.deploymentId??sync.siteDeployment;
++ if(source!==undefined) Object.assign(sync,{sourceCommit:source,source,privateSourceSha:source});
++ if(remote!==undefined) Object.assign(sync,{remoteCommit:remote,github:remote,githubSha:remote});
++ if(deployment!==undefined) Object.assign(sync,{deploymentId:deployment,siteDeployment:deployment});
+  // A verified snapshot is historical evidence, not proof that later rows synced.
+  const covered=sync.verified===true&&sync.latestLocalCountsPending!==true
+   &&sync.coversLatestLocalData!==false;
+@@ -115,7 +123,7 @@ export function buildCampaignCheckpoint({campaign,daily,continuation={},receipt=
+   privateData:true,publicGitHubUploadAllowed:false};
+  const execution={...campaign.execution,status:count>=campaign.target?'completed':'running',
+   latestAudit:{...campaign.execution?.latestAudit,classification:'progress',confirmedCount:count,remaining,
+-   confirmedToday:today,verifiedAt,receiptDigest:digest,proof:'campaign and daily verified receipt ledgers',
++   confirmedToday:today,actualExecutionDate:daily.date,verifiedAt,receiptDigest:digest,proof:'campaign and daily verified receipt ledgers',
+    observation:'Counts derived from confirmed non-draft receipt IDs; delivery and human replies remain unverified.'},
+   latestSynchronization:{...campaign.execution?.latestSynchronization,...sync,
+    privateSourceSha:sync.source??sync.privateSourceSha??campaign.execution?.latestSynchronization?.privateSourceSha,
+diff --git a/tests/campaign-checkpoint-state.test.mjs b/tests/campaign-checkpoint-state.test.mjs
+index 4436d6b..1c0fa45 100644
+--- a/tests/campaign-checkpoint-state.test.mjs
++++ b/tests/campaign-checkpoint-state.test.mjs
+@@ -275,3 +275,30 @@ test('an already-counted exact message ID cannot also be present in exclusions',
+  current.campaign.excludedReceipts.push({...current.campaign.records[0],countAsNewCustomer:false});
+  assert.throws(()=>buildCampaignCheckpoint(current),/Duplicate|excluded/i);
+ });
++
++test('current audit date comes from the validated daily ledger, preserving historical annotations',()=>{
++ const input=fixture();
++ input.campaign.execution.latestAudit.actualExecutionDate='2026-10-23';
++ input.campaign.execution.latestAudit.previousExecutionDateValidCount=33;
++ const before=clone(input),result=buildCampaignCheckpoint(input);
++ assert.equal(result.campaign.execution.latestAudit.actualExecutionDate,DATE);
++ assert.equal(result.campaign.execution.latestAudit.previousExecutionDateValidCount,33);
++ assert.deepEqual(input,before);
++});
++
++test('new-format synchronization snapshot supersedes stale commit and deployment aliases',()=>{
++ const input=fixture(),newSource='c'.repeat(40),newRemote='d'.repeat(40);
++ Object.assign(input.continuation.synchronization,{
++  sourceCommit:newSource,remoteCommit:newRemote,deploymentId:'synthetic-new-deployment',
++  privateSourceSha:SOURCE_SHA,githubSha:GITHUB_SHA
++ });
++ const result=buildCampaignCheckpoint(input),sync=result.campaign.execution.latestSynchronization;
++ for(const key of ['sourceCommit','source','privateSourceSha']) assert.equal(sync[key],newSource,key);
++ for(const key of ['remoteCommit','github','githubSha']) assert.equal(sync[key],newRemote,key);
++ for(const key of ['deploymentId','siteDeployment']) assert.equal(sync[key],'synthetic-new-deployment',key);
++ assert.equal(sync.proof,'synthetic-old-sync-proof.json');
++ assert.equal(sync.coversLatestLocalData,false);
++ assert.equal(sync.latestLocalCountsPending,true);
++ assert.equal(result.campaign.records.length,71);
++ assert.deepEqual(result.campaign.excludedReceipts,input.campaign.excludedReceipts);
++});
