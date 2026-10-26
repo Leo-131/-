@@ -1,5 +1,9 @@
 import '../web/outreach-efficiency.js';
 import {verifiedReceiptKey,verifiedSocialCompanyIdentity,mergeVerifiedReceiptObservations} from './channel-receipt-state.mjs';
+const socialChannels=['linkedin','instagram'];
+export const isSupportedSocialReceiptChannel=channel=>socialChannels.includes(channel);
+const receiptTaskChannel=task=>task?.startsWith('verified-email-')?'email'
+  :socialChannels.find(channel=>task?.startsWith('verified-social-'+channel+'-'))||null;
 export const isKnownCountry=value=>typeof value==='string'&&!!value.trim()
   && !/unknown|unverified|unspecified|global|待核|未知/i.test(value);
 
@@ -52,7 +56,7 @@ export function buildDailyLedger({date,fixedRecords=[],existing=null,receipt=nul
         throw Error('Conflicting message ID');
       if(keys.some(key=>owners.has(key)&&owners.get(key)!==id))throw Error('Company/group already counted');
       keys.forEach(key=>owners.set(key,id));
-      const merged=row.channel==='linkedin'?mergeVerifiedReceiptObservations(previous,row):{...previous,...row};
+      const merged=isSupportedSocialReceiptChannel(row.channel)?mergeVerifiedReceiptObservations(previous,row):{...previous,...row};
       records[records.indexOf(previous)]=merged;byId.set(id,merged);
       continue;
     }
@@ -68,20 +72,21 @@ export function buildDailyLedger({date,fixedRecords=[],existing=null,receipt=nul
 export function missingVerifiedReceipts(source,existing) {
   if(!Array.isArray(source)||!Array.isArray(existing))throw Error('Receipt arrays required');
   const ids=new Set(existing.flatMap(row=>{
-    if(row.channel==='linkedin') {
+    if(isSupportedSocialReceiptChannel(row.channel)) {
       // Legacy invites/profile URLs and asserted local keys are not evidence.
       // A strictly typed, complete new social receipt can be indexed even when
       // the caller has not persisted its optional computed key yet.
-      if(!row.task_id?.startsWith('verified-social-linkedin-') || row.status!=='sent_confirmed')return [];
+      if(receiptTaskChannel(row.task_id)!==row.channel || row.status!=='sent_confirmed')return [];
       return [verifiedReceiptKey(row)];
     }
     if(row.channel===undefined || row.channel==='email')return [row.receiptKey||row.messageId].filter(Boolean);
     return [];
   }));
   return source.filter(row=>{
-    if(!['verified-email-','verified-social-linkedin-'].some(prefix=>row.task_id?.startsWith(prefix))||row.status!=='sent_confirmed')return false;
-    if(row.task_id.startsWith('verified-social-linkedin-')?row.channel!=='linkedin'
-      :row.channel!==undefined&&row.channel!=='email')throw Error('Receipt task/channel mismatch');
+    const channel=receiptTaskChannel(row.task_id);
+    if(!channel||row.status!=='sent_confirmed')return false;
+    if(channel==='email'?row.channel!==undefined&&row.channel!=='email'
+      :row.channel!==channel)throw Error('Receipt task/channel mismatch');
     const id=verifiedReceiptKey(row);if(ids.has(id))return false;
     if(!isKnownCountry(row.country)||!(row.icpScore>70)
         ||!row.batchDate||!row.executionDate||actualExecutionDay(row)!==row.executionDate)

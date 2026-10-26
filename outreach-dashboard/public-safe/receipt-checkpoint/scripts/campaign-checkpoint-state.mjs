@@ -1,7 +1,7 @@
 // Pure post-Sent reconciliation. Never sends, retries, writes or asserts delivery.
 import {isDeepStrictEqual} from 'node:util';
 import {createHash} from 'node:crypto';
-import {actualExecutionDay,isKnownCountry,isExcludedNewCustomerReceipt} from './receipt-state.mjs';
+import {actualExecutionDay,isKnownCountry,isExcludedNewCustomerReceipt,isSupportedSocialReceiptChannel} from './receipt-state.mjs';
 import {verifiedReceiptKey,verifiedSocialCompanyIdentity,mergeVerifiedReceiptObservations} from './channel-receipt-state.mjs';
 
 const receiptId=verifiedReceiptKey;
@@ -35,6 +35,14 @@ function sameReceipt(left,right){
 }
 function snapshotSynchronization(previous,prior){
  const sync={...(previous||{})};
+ // New snapshots use explicit commit keys. Normalize legacy aliases from that
+ // same snapshot so an older campaign alias cannot describe a newer proof.
+ const source=sync.sourceCommit??sync.source??sync.privateSourceSha;
+ const remote=sync.remoteCommit??sync.github??sync.githubSha;
+ const deployment=sync.deploymentId??sync.siteDeployment;
+ if(source!==undefined) Object.assign(sync,{sourceCommit:source,source,privateSourceSha:source});
+ if(remote!==undefined) Object.assign(sync,{remoteCommit:remote,github:remote,githubSha:remote});
+ if(deployment!==undefined) Object.assign(sync,{deploymentId:deployment,siteDeployment:deployment});
  // A verified snapshot is historical evidence, not proof that later rows synced.
  const covered=sync.verified===true&&sync.latestLocalCountsPending!==true
   &&sync.coversLatestLocalData!==false;
@@ -44,6 +52,54 @@ function snapshotSynchronization(previous,prior){
   :covered&&Number.isInteger(prior?.confirmedToday)?prior.confirmedToday:null;
  sync.verified=sync.verified===true;
  return sync;
+}
+
+function nextInstruction({complete,remaining,date,today,dailyTarget,covered}){
+ return complete?'Campaign target reached; stop new-customer sending.':
+  `Continue ${remaining} verified new companies; ${date} daily ${today}/${dailyTarget}. `+
+  (covered?'Latest local counts are remotely verified.':'New local receipts require remote synchronization; do not claim cloud/GitHub are current.')+
+  ' Recheck permanent company/group locks before one Send; unknown outcomes never resend.';
+}
+
+// Pure post-confirmation projection. An old day file cannot authorize current
+// sync coverage; only a matching, validated campaign checkpoint can retain it.
+export function buildDailyContinuation({daily,continuation={},campaignContinuation=null,
+ fixedBatchDate,fixedBatchConfirmed}){
+ if(!daily||!/^\d{4}-\d{2}-\d{2}$/.test(daily.date||'')||!Array.isArray(daily.records)
+  ||!Number.isFinite(Date.parse(daily.date+'T00:00:00Z'))
+  ||new Date(daily.date+'T00:00:00Z').toISOString().slice(0,10)!==daily.date
+  ||!Number.isSafeInteger(daily.target)||daily.target<1||daily.confirmedCount!==daily.records.length
+  ||daily.remaining!==Math.max(0,daily.target-daily.records.length))throw Error('Invalid daily state');
+ let latest=null;const ids=new Set(),owners=new Set();
+ for(const row of daily.records){
+  const {id}=validReceipt(row),identity=keys(row);
+  if(actualExecutionDay(row)!==daily.date||ids.has(id)||identity.some(key=>owners.has(key)))
+   throw Error('Daily continuation receipt conflict');
+  ids.add(id);identity.forEach(key=>owners.add(key));
+  if(!latest||Date.parse(row.sentAtLocal||row.timestamp)>=Date.parse(latest.sentAtLocal||latest.timestamp))latest=row;
+ }
+ const current=campaignContinuation;
+ if(current&&(current.date!==daily.date||current.confirmedToday!==daily.confirmedCount
+  ||current.dailyTarget!==daily.target||current.dailyRemaining!==daily.remaining
+  ||!Number.isSafeInteger(current.target)||current.target<1
+  ||!Number.isSafeInteger(current.confirmedCount)||current.confirmedCount<0||current.confirmedCount>current.target
+  ||current.remaining!==Math.max(0,current.target-current.confirmedCount)
+  ||!/^[a-f0-9]{64}$/.test(current.receiptDigest||'')
+  ||(latest&&current.lastReceiptId!==receiptId(latest))))throw Error('Campaign/day continuation binding mismatch');
+ const sync=snapshotSynchronization(current?.synchronization??continuation.synchronization,current??continuation);
+ const covered=!!current&&sync.verified&&sync.coversLatestLocalData===true
+  &&sync.latestLocalCountsPending!==true&&sync.synchronizedConfirmedCount===current.confirmedCount
+  &&sync.synchronizedToday===daily.confirmedCount&&sync.receiptDigest===current.receiptDigest;
+ sync.coversLatestLocalData=covered;sync.latestLocalCountsPending=!covered;
+ return {...continuation,date:daily.date,timezone:'Asia/Shanghai',target:daily.target,
+  confirmed:daily.confirmedCount,remaining:daily.remaining,scope:daily.scope,batchWaitMs:0,
+  lastReceiptId:current?.lastReceiptId??(latest?receiptId(latest):null),
+  receiptDigest:current?.receiptDigest??null,synchronizationPending:!covered,synchronization:sync,
+  ...(fixedBatchDate!==undefined?{fixedBatchDate}:{}),
+  ...(fixedBatchConfirmed!==undefined?{fixedBatchConfirmed}:{}),
+  next:nextInstruction({complete:current?current.confirmedCount>=current.target:false,
+   remaining:current?.remaining??daily.remaining,date:daily.date,today:daily.confirmedCount,
+   dailyTarget:daily.target,covered})};
 }
 
 export function buildCampaignCheckpoint({campaign,daily,continuation={},receipt=null,verifiedAt}){
@@ -73,7 +129,7 @@ export function buildCampaignCheckpoint({campaign,daily,continuation={},receipt=
   if(excluded.some(row=>receiptId(row)===id))throw Error('Excluded receipt cannot be restored');
   if(existing){
    if(!sameReceipt(existing,receipt))throw Error('Conflicting message ID');
-   if(receipt.channel==='linkedin'){
+   if(isSupportedSocialReceiptChannel(receipt.channel)){
     const merged=mergeVerifiedReceiptObservations(existing,receipt);
     records[records.indexOf(existing)]=merged;byId.set(id,merged);
    }
@@ -107,15 +163,14 @@ export function buildCampaignCheckpoint({campaign,daily,continuation={},receipt=
   goalStatus:count>=campaign.target?'complete':'active',status:count>=campaign.target?'completed':'ready_to_continue',
   target:campaign.target,confirmedCount:count,remaining,confirmedToday:today,dailyTarget:daily.target,
   dailyRemaining:daily.remaining,lastReceiptId:latest?receiptId(latest):null,verifiedAt,
-  receiptDigest:digest,synchronization:sync,currentBlocker:continuation.currentBlocker??null,
-  next:count>=campaign.target?'Campaign target reached; stop new-customer sending.':
-   `Continue ${remaining} verified new companies; ${daily.date} daily ${today}/${daily.target}. `+
-   (covered?'Latest local counts are remotely verified.':'New local receipts require remote synchronization; do not claim cloud/GitHub are current.')+
-   ' Recheck permanent company/group locks before one Send; unknown outcomes never resend.',
+  receiptDigest:digest,synchronization:sync,synchronizationPending:!covered,
+  currentBlocker:continuation.currentBlocker??null,
+  next:nextInstruction({complete:count>=campaign.target,remaining,date:daily.date,
+   today,dailyTarget:daily.target,covered}),
   privateData:true,publicGitHubUploadAllowed:false};
- const execution={...campaign.execution,status:count>=campaign.target?'completed':'running',
+ const execution={...campaign.execution,status:count>=campaign.target?'completed':'running',actualExecutionDate:daily.date,
   latestAudit:{...campaign.execution?.latestAudit,classification:'progress',confirmedCount:count,remaining,
-   confirmedToday:today,verifiedAt,receiptDigest:digest,proof:'campaign and daily verified receipt ledgers',
+   confirmedToday:today,actualExecutionDate:daily.date,verifiedAt,receiptDigest:digest,proof:'campaign and daily verified receipt ledgers',
    observation:'Counts derived from confirmed non-draft receipt IDs; delivery and human replies remain unverified.'},
   latestSynchronization:{...campaign.execution?.latestSynchronization,...sync,
    privateSourceSha:sync.source??sync.privateSourceSha??campaign.execution?.latestSynchronization?.privateSourceSha,

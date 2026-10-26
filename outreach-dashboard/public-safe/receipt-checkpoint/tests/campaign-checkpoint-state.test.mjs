@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildCampaignCheckpoint} from '../scripts/campaign-checkpoint-state.mjs';
+import {buildCampaignCheckpoint,buildDailyContinuation} from '../scripts/campaign-checkpoint-state.mjs';
 
 // Every row, address, message ID and synchronization proof here is synthetic.
 // These fixtures are never browser evidence, real sends or remote-sync proofs.
@@ -274,4 +274,109 @@ test('an already-counted exact message ID cannot also be present in exclusions',
  assert.doesNotThrow(()=>buildCampaignCheckpoint(current));
  current.campaign.excludedReceipts.push({...current.campaign.records[0],countAsNewCustomer:false});
  assert.throws(()=>buildCampaignCheckpoint(current),/Duplicate|excluded/i);
+});
+
+test('current audit date comes from the validated daily ledger, preserving historical annotations',()=>{
+ const input=fixture();
+ input.campaign.execution.latestAudit.actualExecutionDate='2026-10-23';
+ input.campaign.execution.latestAudit.previousExecutionDateValidCount=33;
+ const before=clone(input),result=buildCampaignCheckpoint(input);
+ assert.equal(result.campaign.execution.latestAudit.actualExecutionDate,DATE);
+ assert.equal(result.campaign.execution.latestAudit.previousExecutionDateValidCount,33);
+ assert.deepEqual(input,before);
+});
+
+test('new-format synchronization snapshot supersedes stale commit and deployment aliases',()=>{
+ const input=fixture(),newSource='c'.repeat(40),newRemote='d'.repeat(40);
+ Object.assign(input.continuation.synchronization,{
+  sourceCommit:newSource,remoteCommit:newRemote,deploymentId:'synthetic-new-deployment',
+  privateSourceSha:SOURCE_SHA,githubSha:GITHUB_SHA
+ });
+ const result=buildCampaignCheckpoint(input),sync=result.campaign.execution.latestSynchronization;
+ for(const key of ['sourceCommit','source','privateSourceSha']) assert.equal(sync[key],newSource,key);
+ for(const key of ['remoteCommit','github','githubSha']) assert.equal(sync[key],newRemote,key);
+ for(const key of ['deploymentId','siteDeployment']) assert.equal(sync[key],'synthetic-new-deployment',key);
+ assert.equal(sync.proof,'synthetic-old-sync-proof.json');
+ assert.equal(sync.coversLatestLocalData,false);
+ assert.equal(sync.latestLocalCountsPending,true);
+ assert.equal(result.campaign.records.length,71);
+ assert.deepEqual(result.campaign.excludedReceipts,input.campaign.excludedReceipts);
+});
+
+test('current execution date cannot retain a prior day after a verified receipt checkpoint',()=>{
+ const input=fixture();input.campaign.execution.actualExecutionDate='2026-10-23';
+ const before=clone(input),result=buildCampaignCheckpoint(input);
+ assert.equal(result.campaign.execution.actualExecutionDate,DATE);
+ assert.equal(result.campaign.execution.latestAudit.actualExecutionDate,DATE);
+ assert.deepEqual(input,before);assert.deepEqual(result.campaign.excludedReceipts,input.campaign.excludedReceipts);
+});
+
+test('daily continuation derives current pending state from the campaign and preserves historical proof and user metadata',()=>{
+ const input=fixture(),checkpoint=buildCampaignCheckpoint(input),prior={date:'2026-10-23',confirmed:1,
+  remaining:99,lastReceiptId:'1_0:synthetic-stale-day',synchronizationPending:false,
+  synchronization:{verified:true,coversLatestLocalData:true},next:'synthetic stale next',
+  userMetadata:{records:[{note:'preserve day annotation'}]},latestVerifiedRemoteProof:'synthetic-earlier-proof'};
+ const before=clone({input,checkpoint,prior}),day=buildDailyContinuation({daily:input.daily,
+  continuation:prior,campaignContinuation:checkpoint.continuation,fixedBatchDate:'2026-10-10',fixedBatchConfirmed:100});
+ assert.equal(day.date,DATE);assert.equal(day.confirmed,31);assert.equal(day.remaining,69);
+ assert.equal(day.lastReceiptId,checkpoint.continuation.lastReceiptId);
+ assert.equal(day.synchronizationPending,true);assert.deepEqual(day.synchronization,checkpoint.continuation.synchronization);
+ assert.equal(day.next,checkpoint.continuation.next);assert.equal(day.receiptDigest,checkpoint.continuation.receiptDigest);
+ assert.equal(day.synchronization.proof,input.continuation.synchronization.proof);
+ assert.deepEqual(day.userMetadata,prior.userMetadata);assert.equal(day.latestVerifiedRemoteProof,prior.latestVerifiedRemoteProof);
+ assert.equal(day.fixedBatchConfirmed,100);assert.deepEqual({input,checkpoint,prior},before);
+});
+
+test('daily continuation retains current remote coverage only for the exact validated campaign snapshot',()=>{
+ const input=fixture(),first=buildCampaignCheckpoint(input);
+ const continuation={...first.continuation,synchronization:{...first.continuation.synchronization,
+  verified:true,synchronizedConfirmedCount:71,synchronizedToday:31,receiptDigest:first.continuation.receiptDigest,
+  latestLocalCountsPending:false,coversLatestLocalData:true}};
+ const current=buildCampaignCheckpoint({...input,campaign:first.campaign,receipt:null,continuation});
+ const day=buildDailyContinuation({daily:input.daily,campaignContinuation:current.continuation});
+ assert.equal(day.synchronizationPending,false);assert.equal(day.synchronization.coversLatestLocalData,true);
+ assert.equal(day.synchronization.latestLocalCountsPending,false);assert.equal(day.next,current.continuation.next);
+ const corrupt=clone(current.continuation);corrupt.synchronization.receiptDigest='e'.repeat(64);
+ const pending=buildDailyContinuation({daily:input.daily,campaignContinuation:corrupt});
+ assert.equal(pending.synchronizationPending,true);assert.equal(pending.synchronization.coversLatestLocalData,false);
+ assert.match(pending.next,/require remote synchronization/);
+});
+
+test('legacy daily continuation without a campaign keeps old proof but never inherits its coverage claim',()=>{
+ const input=fixture(),prior={synchronizationPending:false,next:'synthetic old next',
+  synchronization:{verified:true,proof:'synthetic-old-proof',sourceCommit:SOURCE_SHA,
+   synchronizedToday:31,coversLatestLocalData:true,latestLocalCountsPending:false}};
+ const before=clone(prior),day=buildDailyContinuation({daily:input.daily,continuation:prior});
+ assert.equal(day.confirmed,31);assert.equal(day.remaining,69);assert.equal(day.synchronizationPending,true);
+ assert.equal(day.synchronization.verified,true);assert.equal(day.synchronization.proof,'synthetic-old-proof');
+ assert.equal(day.synchronization.coversLatestLocalData,false);assert.equal(day.synchronization.latestLocalCountsPending,true);
+ assert.equal(day.receiptDigest,null);assert.match(day.next,/require remote synchronization/);assert.deepEqual(prior,before);
+});
+
+test('daily continuation refuses mismatched campaign bindings or invalid daily evidence without mutation',()=>{
+ const input=fixture(),checkpoint=buildCampaignCheckpoint(input);
+ for(const mutation of [{date:'2026-10-23'},{confirmedToday:30},{dailyRemaining:70},
+  {lastReceiptId:'1_0:synthetic-unrelated'},{receiptDigest:null},{remaining:999}]){
+  const current={...checkpoint.continuation,...mutation},before=clone(current);
+  assert.throws(()=>buildDailyContinuation({daily:input.daily,campaignContinuation:current}),/binding mismatch/);
+  assert.deepEqual(current,before);
+ }
+ for(const mutate of [d=>{d.date='2026-10-32';d.records=[];d.confirmedCount=0;d.remaining=100;},
+  d=>{d.records[0].status='send_unconfirmed';},d=>{d.records[0].executionDate='2026-10-23';},
+  d=>{d.records[1]=clone(d.records[0]);}]){
+  const daily=clone(input.daily);mutate(daily);const before=clone(daily);
+  assert.throws(()=>buildDailyContinuation({daily}));assert.deepEqual(daily,before);
+ }
+});
+
+test('daily totals may include valid same-day receipts before the current campaign started',()=>{
+ const input=fixture({total:0,prior:0});input.campaign.startedAt=`${DATE}T10:00:00+08:00`;
+ input.daily.records.unshift(receipt(800,{time:'08:00'}));
+ input.daily.confirmedCount=2;input.daily.remaining=98;
+ const checkpoint=buildCampaignCheckpoint(input),before=clone(input);
+ assert.equal(checkpoint.campaign.confirmedCount,1);assert.equal(checkpoint.continuation.confirmedToday,2);
+ const day=buildDailyContinuation({daily:input.daily,campaignContinuation:checkpoint.continuation});
+ assert.equal(day.confirmed,2);assert.equal(day.remaining,98);assert.equal(day.synchronizationPending,true);
+ assert.equal(day.lastReceiptId,input.receipt.mailId);assert.equal(day.next,checkpoint.continuation.next);
+ assert.deepEqual(input,before);
 });
