@@ -19,11 +19,11 @@
     "linkedin": 0,
     "instagram": 8
   },
-  "countingRule": "Unique new company/group with actual email receipt or independently reopened official social outgoing message. Drafts, invitations, follows, opened conversations, forms, unknown outcomes, prior company/group contacts and permanent failures are excluded.",
+  "countingRule": "Unique verified new-company sends only. Explicit delivery failures, recipient-policy refusals, prior-company contacts, drafts and unknown outcomes are excluded. Outgoing bubbles alone are insufficient.",
   "deliveryStatus": "Verified outgoing history does not establish final inbox delivery or a human response.",
   "knownFailedDeliveryReceiptsExcluded": 8,
   "priorGroupDuplicateReceiptsExcluded": 1,
-  "retainedExclusions": 9,
+  "retainedExclusions": 10,
   "replyRate": null,
   "replyRateReason": "Sent-cohort reply observations remain incomplete. This outgoing-receipt update does not establish a no-reply rate or improved human conversion.",
   "humanReplyImprovementProven": false,
@@ -36,11 +36,11 @@
     "campaignRows": 110,
     "dailyRows": 22,
     "allCampaignReceiptsExactlyOnceInBothStores": true,
-    "permanentRows": 2957,
-    "privateSiteRows": 2800,
+    "permanentRows": 2958,
+    "privateSiteRows": 2801,
     "missingReceipts": 0,
     "duplicateReceipts": 0,
-    "retainedExclusions": 9,
+    "retainedExclusions": 10,
     "previousPrivateRowsPreserved": true,
     "previous100AndNineExclusionsPreserved": true,
     "previous101AndNineExclusionsPreserved": true,
@@ -50,7 +50,9 @@
     "previous106AndNineExclusionsPreserved": true,
     "previous107AndNineExclusionsPreserved": true,
     "previous108AndNineExclusionsPreserved": true,
-    "previous109AndNineExclusionsPreserved": true
+    "previous109AndNineExclusionsPreserved": true,
+    "previous110AndNineExclusionsPreserved": true,
+    "rejectedAttemptRetainedWithoutValidIncrement": true
   },
   "privateSystemPublication": {
     "status": "succeeded",
@@ -61,11 +63,11 @@
     "exactSourceCommit": null
   },
   "validation": {
-    "currentReceiptCanonicalAudit": "passed_controller_read_only",
+    "currentReceiptCanonicalAudit": "explicit_recipient_refusal_excluded_prior_valid_receipts_preserved",
     "immutablePriorReceiptsAndExclusionsAudit": "passed",
-    "localAuditAtUtc": "2026-10-27T07:50:37.510Z",
+    "localAuditAtUtc": "2026-10-27T09:13:49.444Z",
     "fullSuiteRunForThisDataUpdate": false,
-    "codeUnchangedSincePreviouslyPublishedSurfaceRepair": true,
+    "codeUnchangedSincePreviouslyPublishedSurfaceRepair": false,
     "priorRepairFocusedTests": {
       "passed": 65,
       "failed": 0,
@@ -75,12 +77,20 @@
       "passed": 21,
       "failed": 0
     },
-    "productionBuild": "passed"
+    "productionBuild": "passed",
+    "currentGuardFocusedTests": {
+      "passed": 64,
+      "failed": 0
+    },
+    "finalProjectionIntegrationTests": {
+      "passed": 11,
+      "failed": 0
+    }
   },
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Complete customer records remain in local private ledgers and the owner-private customer system. No customer identities, business contacts, message content or credentials are included.",
   "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
-  "currentSynchronizationPurpose": "Incremental anonymous statistics for audited110-company frozen checkpoint. Not2026-10-2723:50AsiaShanghai scheduled synchronization. Later activity is outside this checkpoint. Private source revisions, receipt digests and deployment identifiers are not included.",
+  "currentSynchronizationPurpose": "Recipient-policy correction and verification safeguard. Valid campaign110/day22 unchanged; one rejected attempt retained outside valid totals. Incremental correction, not the23:50AsiaShanghai daily scheduled sync.",
   "currentChannelRestrictions": {
     "email": "Partial delivery degradation remains under provider diagnosis; global dispatch resumption is not verified.",
     "linkedinNewPageConversations": "Provider quota restriction remains subject to current live verification.",
@@ -88,7 +98,7 @@
     "independentResearch": "active"
   },
   "scheduledWindowCompletionClaimed": false,
-  "newUniqueCompaniesInThisPublication": 1,
+  "newUniqueCompaniesInThisPublication": 0,
   "dataIdentity": {
     "dataDate": "2026-10-27",
     "timezone": "Asia/Shanghai",
@@ -111,8 +121,10 @@
       "instagram": 8
     },
     "globalEmailDispatchResumed": false,
-    "unattendedHostVerified": false
+    "unattendedHostVerified": false,
+    "recipientPolicyRejectionsExcluded": 1
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); fixed field order, anonymous counts only; volatile timestamps excluded",
-  "dataSummaryDigest": "51df771c4dc603ae08cbdefb3ec0cff15abbb2885f872bf5be63211363aa93bc"
+  "dataSummaryDigest": "7829aab23da84992bfb7ccbaeaf7050a8d824fbfb28c264d7b1ae5854aafcf2b",
+  "recipientPolicyRejectedAttemptsExcluded": 1
 }
