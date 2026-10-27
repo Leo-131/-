@@ -4,20 +4,20 @@
   "timezone": "Asia/Shanghai",
   "goalStatus": "active",
   "campaignTarget": 500,
-  "confirmedUniqueNewSendsInCampaign": 106,
-  "remainingInCampaign": 394,
+  "confirmedUniqueNewSendsInCampaign": 107,
+  "remainingInCampaign": 393,
   "dailyTarget": 100,
-  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 18,
-  "dailyRemaining": 82,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 19,
+  "dailyRemaining": 81,
   "countedChannelsInCurrentCampaign": {
     "email": 85,
     "linkedin": 10,
-    "instagram": 11
+    "instagram": 12
   },
   "countedChannelsOnDataDate": {
     "email": 11,
     "linkedin": 0,
-    "instagram": 7
+    "instagram": 8
   },
   "countingRule": "Unique new company/group with actual email receipt or independently reopened official social outgoing message. Drafts, invitations, follows, opened conversations, forms, unknown outcomes, prior company/group contacts and permanent failures are excluded.",
   "deliveryStatus": "Verified outgoing history does not establish final inbox delivery or a human response.",
@@ -33,11 +33,11 @@
   "unattendedHostVerified": false,
   "dailyTerritoryVerification": "Actual fresh bounded agency-table read on2026-10-27; contract dates control over stale formula labels.",
   "receiptConsistencyAudit": {
-    "campaignRows": 106,
-    "dailyRows": 18,
+    "campaignRows": 107,
+    "dailyRows": 19,
     "allCampaignReceiptsExactlyOnceInBothStores": true,
-    "permanentRows": 2953,
-    "privateSiteRows": 2796,
+    "permanentRows": 2954,
+    "privateSiteRows": 2797,
     "missingReceipts": 0,
     "duplicateReceipts": 0,
     "retainedExclusions": 9,
@@ -46,20 +46,21 @@
     "previous101AndNineExclusionsPreserved": true,
     "previous102AndNineExclusionsPreserved": true,
     "previous103AndNineExclusionsPreserved": true,
-    "previous105AndNineExclusionsPreserved": true
+    "previous105AndNineExclusionsPreserved": true,
+    "previous106AndNineExclusionsPreserved": true
   },
   "privateSystemPublication": {
     "status": "succeeded",
     "dataDate": "2026-10-27",
     "audienceUnchanged": "owner-private",
     "verificationAuthority": "Controller-confirmed successful private publication and exact ledger readback; this public document contains only aggregate statistics.",
-    "campaignConfirmed": 106,
+    "campaignConfirmed": 107,
     "exactSourceCommit": null
   },
   "validation": {
     "currentReceiptCanonicalAudit": "passed_controller_read_only",
     "immutablePriorReceiptsAndExclusionsAudit": "passed",
-    "localAuditAtUtc": "2026-10-27T03:38:50.146Z",
+    "localAuditAtUtc": "2026-10-27T04:37:16.294Z",
     "fullSuiteRunForThisDataUpdate": false,
     "codeUnchangedSincePreviouslyPublishedSurfaceRepair": true,
     "priorRepairFocusedTests": {
@@ -76,11 +77,11 @@
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Complete customer records remain in local private ledgers and the owner-private customer system. No customer identities, business contacts, message content or credentials are included.",
   "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
-  "currentSynchronizationPurpose": "Incremental anonymous statistics for the explicitly audited106-company frozen checkpoint. Not the2026-10-27 23:50AsiaShanghai scheduled synchronization. Later activity is outside this checkpoint. Private source revisions, receipt digests and deployment identifiers are not included.",
+  "currentSynchronizationPurpose": "Incremental anonymous statistics for the explicitly audited107-company frozen checkpoint. Not the2026-10-27 23:50AsiaShanghai scheduled synchronization. Later activity is outside this checkpoint. Private source revisions, receipt digests and deployment identifiers are not included.",
   "currentChannelRestrictions": {
     "email": "Partial delivery degradation remains under provider diagnosis; global dispatch resumption is not verified.",
     "linkedinNewPageConversations": "Provider quota restriction remains subject to current live verification.",
-    "instagram": "Seven actual new-company outgoing messages on the data date were independently reopened and permanently recorded; no unlimited-capacity claim.",
+    "instagram": "Eight actual new-company outgoing messages on the data date were independently reopened and permanently recorded; no unlimited-capacity claim.",
     "independentResearch": "active"
   },
   "scheduledWindowCompletionClaimed": false,
@@ -89,26 +90,26 @@
     "dataDate": "2026-10-27",
     "timezone": "Asia/Shanghai",
     "campaignTarget": 500,
-    "campaignConfirmed": 106,
-    "campaignRemaining": 394,
+    "campaignConfirmed": 107,
+    "campaignRemaining": 393,
     "dailyTarget": 100,
-    "dailyConfirmed": 18,
-    "dailyRemaining": 82,
+    "dailyConfirmed": 19,
+    "dailyRemaining": 81,
     "knownDeliveryFailuresExcluded": 8,
     "priorGroupDuplicatesExcluded": 1,
     "campaignChannels": {
       "email": 85,
       "linkedin": 10,
-      "instagram": 11
+      "instagram": 12
     },
     "dailyChannels": {
       "email": 11,
       "linkedin": 0,
-      "instagram": 7
+      "instagram": 8
     },
     "globalEmailDispatchResumed": false,
     "unattendedHostVerified": false
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); fixed field order, anonymous counts only; volatile timestamps excluded",
-  "dataSummaryDigest": "1e2b3d4dfa6e86ba41f79d6bceaecfef9698007df0ed98f276f51280af9ce03d"
+  "dataSummaryDigest": "d321af1e65e3abae8c305fed609ae15e4f0096787a909c04f8ec997cffdfdfa0"
 }
