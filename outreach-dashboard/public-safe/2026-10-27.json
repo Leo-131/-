@@ -4,18 +4,18 @@
   "timezone": "Asia/Shanghai",
   "goalStatus": "active",
   "campaignTarget": 500,
-  "confirmedUniqueNewSendsInCampaign": 114,
-  "remainingInCampaign": 386,
+  "confirmedUniqueNewSendsInCampaign": 116,
+  "remainingInCampaign": 384,
   "dailyTarget": 100,
-  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 26,
-  "dailyRemaining": 74,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 28,
+  "dailyRemaining": 72,
   "countedChannelsInCurrentCampaign": {
-    "email": 90,
+    "email": 92,
     "linkedin": 10,
     "instagram": 14
   },
   "countedChannelsOnDataDate": {
-    "email": 16,
+    "email": 18,
     "linkedin": 0,
     "instagram": 10
   },
@@ -33,11 +33,11 @@
   "unattendedHostVerified": false,
   "dailyTerritoryVerification": "Actual fresh bounded agency-table read on2026-10-27; contract dates control over stale formula labels.",
   "receiptConsistencyAudit": {
-    "campaignRows": 114,
-    "dailyRows": 26,
+    "campaignRows": 116,
+    "dailyRows": 28,
     "allCampaignReceiptsExactlyOnceInBothStores": true,
-    "permanentRows": 2962,
-    "privateSiteRows": 2805,
+    "permanentRows": 2964,
+    "privateSiteRows": 2807,
     "missingReceipts": 0,
     "duplicateReceipts": 0,
     "retainedExclusions": 10,
@@ -57,21 +57,23 @@
     "previous110And10ExclusionsPreserved": true,
     "previous111And10ExclusionsPreserved": true,
     "previous112And10ExclusionsPreserved": true,
-    "previous113And10ExclusionsPreserved": true
+    "previous113And10ExclusionsPreserved": true,
+    "previous114And10ExclusionsPreserved": true,
+    "previous115And10ExclusionsPreserved": true
   },
   "privateSystemPublication": {
     "status": "succeeded",
     "dataDate": "2026-10-27",
     "audienceUnchanged": "owner-private",
     "verificationAuthority": "Controller-confirmed successful private publication and exact ledger readback; this public document contains only aggregate statistics.",
-    "campaignConfirmed": 114,
+    "campaignConfirmed": 116,
     "exactSourceCommit": null
   },
   "validation": {
     "currentReceiptCanonicalAudit": "passed_saved_native_observation",
     "immutablePriorReceiptsAndExclusionsAudit": "passed",
     "independentSavedProofAudit": "passed",
-    "localAuditAtUtc": "2026-10-27T13:25:49.892Z",
+    "localAuditAtUtc": "2026-10-27T15:49:07.158Z",
     "fullSuiteRunForThisDataUpdate": false,
     "productionCodeChangedThisUpdate": false,
     "productionBuild": "passed",
@@ -80,7 +82,7 @@
   "privateCustomerDataIncluded": false,
   "fullCustomerData": "Complete customer records remain in local private ledgers and the owner-private customer system. No customer identities, business contacts, message content or credentials are included.",
   "fullDataGitHubSync": "pending_private_repository_or_explicit_disclosure_authorization",
-  "currentSynchronizationPurpose": "Incremental anonymous statistics for audited114-company frozen checkpoint. Not2026-10-2723:50AsiaShanghai scheduled synchronization. Later activity is outside this checkpoint. Private source revisions, receipt digests and deployment identifiers are not included.",
+  "currentSynchronizationPurpose": "Scheduled 2026-10-27 Asia/Shanghai daily anonymous statistics synchronization. Audited 116-company checkpoint includes two new verified sends since prior publication. Customer identities, contacts, message content, private source revisions, receipt digests and deployment identifiers remain excluded.",
   "currentChannelRestrictions": {
     "email": "Partial delivery degradation remains under provider diagnosis; global dispatch resumption is not verified.",
     "linkedinNewPageConversations": "Provider quota restriction remains subject to current live verification.",
@@ -88,25 +90,25 @@
     "independentResearch": "active"
   },
   "scheduledWindowCompletionClaimed": false,
-  "newUniqueCompaniesInThisPublication": 1,
+  "newUniqueCompaniesInThisPublication": 2,
   "dataIdentity": {
     "dataDate": "2026-10-27",
     "timezone": "Asia/Shanghai",
     "campaignTarget": 500,
-    "campaignConfirmed": 114,
-    "campaignRemaining": 386,
+    "campaignConfirmed": 116,
+    "campaignRemaining": 384,
     "dailyTarget": 100,
-    "dailyConfirmed": 26,
-    "dailyRemaining": 74,
+    "dailyConfirmed": 28,
+    "dailyRemaining": 72,
     "knownDeliveryFailuresExcluded": 8,
     "priorGroupDuplicatesExcluded": 1,
     "campaignChannels": {
-      "email": 90,
+      "email": 92,
       "linkedin": 10,
       "instagram": 14
     },
     "dailyChannels": {
-      "email": 16,
+      "email": 18,
       "linkedin": 0,
       "instagram": 10
     },
@@ -115,6 +117,12 @@
     "recipientPolicyRejectionsExcluded": 1
   },
   "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); fixed field order, anonymous counts only; volatile timestamps excluded",
-  "dataSummaryDigest": "7f21102ad35a6f9e8b2d549cc36a48e8034cadc0b8936c69c830cbd5c142286b",
-  "recipientPolicyRejectedAttemptsExcluded": 1
+  "dataSummaryDigest": "1a3f2c0a3458d293f9c15c013542ea9d25080ce29e41b0a2c9c365df4dd619ef",
+  "recipientPolicyRejectedAttemptsExcluded": 1,
+  "scheduledSynchronization": {
+    "scheduledAtLocal": "2026-10-27T23:50:00+08:00",
+    "startedAtUtc": "2026-10-27T15:48:03Z",
+    "remoteVerification": "pending",
+    "completionBeforeDeadlineClaimed": false
+  }
 }
