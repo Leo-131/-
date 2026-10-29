@@ -2,19 +2,20 @@
   "schemaVersion": 1,
   "snapshotDate": "2026-10-29",
   "campaignCheckpoint": {
-    "confirmed": 121,
+    "confirmed": 122,
     "target": 500,
-    "remaining": 379,
-    "confirmedToday": 3,
-    "confirmedEmailRecords": 97,
+    "remaining": 378,
+    "confirmedToday": 4,
+    "confirmedEmailRecords": 98,
     "confirmedSocialRecords": 24
   },
   "report": {
     "status": "cloud_verification_complete",
     "liveCloudVerificationComplete": true,
-    "verifiedAtUtc": "2026-10-29T15:25:06Z",
+    "verifiedAtUtc": "2026-10-29T15:57:40Z",
     "verificationScope": "Owner-authenticated live report",
-    "reportCalculatedAtUtc": "2026-10-29T15:22:09.754Z"
+    "reportCalculatedAtUtc": "2026-10-29T15:56:45.749Z",
+    "campaignCheckpointAtVerification": 122
   },
   "codeChanges": {
     "files": [
@@ -48,14 +49,14 @@
   "dataDate": "2026-10-29",
   "monthlyReconciliation": {
     "reportingPeriod": "2026-10",
-    "uniqueOutreach": 332,
+    "uniqueOutreach": 333,
     "periodUniqueReplyEntities": 5,
     "matchedCurrentMonthSendQueue": 3,
     "matchedHumanReplyEntities": 2,
     "matchedAutomatedReplyEntities": 1,
     "matchedUnknownReplyEntities": 0,
     "observedSendQueueEntities": 3,
-    "unverifiedSendQueueEntities": 329,
+    "unverifiedSendQueueEntities": 330,
     "formalTotalReplyRate": null,
     "formalHumanReplyRate": null,
     "rateStatus": "Observation coverage incomplete; formal rates remain unverified."
@@ -63,6 +64,9 @@
   "synchronization": {
     "scope": "Anonymous campaign aggregates and previously published generic safe code only",
     "mode": "incremental_after_verified_sends",
-    "completeCustomerRecordsPublished": false
+    "completeCustomerRecordsPublished": false,
+    "aggregateDataKey": "2026-10-29|122|500|378|4|98|24|333|5|3|330",
+    "privateSystemDeploymentVerified": true,
+    "trigger": "Active session incremental synchronization; paused recurring jobs were not resumed"
   }
 }
