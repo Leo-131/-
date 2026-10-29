@@ -2,16 +2,19 @@
   "schemaVersion": 1,
   "snapshotDate": "2026-10-29",
   "campaignCheckpoint": {
-    "confirmed": 119,
+    "confirmed": 121,
     "target": 500,
-    "remaining": 381,
-    "confirmedToday": 1
+    "remaining": 379,
+    "confirmedToday": 3,
+    "confirmedEmailRecords": 97,
+    "confirmedSocialRecords": 24
   },
   "report": {
     "status": "cloud_verification_complete",
     "liveCloudVerificationComplete": true,
-    "verifiedAtUtc": "2026-10-29T13:49:29.073Z",
-    "verificationScope": "Owner-authenticated live report"
+    "verifiedAtUtc": "2026-10-29T15:25:06Z",
+    "verificationScope": "Owner-authenticated live report",
+    "reportCalculatedAtUtc": "2026-10-29T15:22:09.754Z"
   },
   "codeChanges": {
     "files": [
@@ -45,16 +48,21 @@
   "dataDate": "2026-10-29",
   "monthlyReconciliation": {
     "reportingPeriod": "2026-10",
-    "uniqueOutreach": 330,
+    "uniqueOutreach": 332,
     "periodUniqueReplyEntities": 5,
     "matchedCurrentMonthSendQueue": 3,
     "matchedHumanReplyEntities": 2,
     "matchedAutomatedReplyEntities": 1,
     "matchedUnknownReplyEntities": 0,
     "observedSendQueueEntities": 3,
-    "unverifiedSendQueueEntities": 327,
+    "unverifiedSendQueueEntities": 329,
     "formalTotalReplyRate": null,
     "formalHumanReplyRate": null,
     "rateStatus": "Observation coverage incomplete; formal rates remain unverified."
+  },
+  "synchronization": {
+    "scope": "Anonymous campaign aggregates and previously published generic safe code only",
+    "mode": "incremental_after_verified_sends",
+    "completeCustomerRecordsPublished": false
   }
 }
