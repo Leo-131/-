@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 4,
+  "dataDate": "2026-10-28",
+  "timezone": "Asia/Shanghai",
+  "goalStatus": "active",
+  "campaignTarget": 500,
+  "confirmedUniqueNewSendsInCampaign": 118,
+  "remainingInCampaign": 382,
+  "dailyTarget": 100,
+  "confirmedUniqueNewSendsRecordedByThisTaskOnDataDate": 2,
+  "dailyRemaining": 98,
+  "countedChannelsInCurrentCampaign": {
+    "email": 94,
+    "linkedin": 10,
+    "instagram": 14
+  },
+  "countedChannelsOnDataDate": {
+    "email": 2,
+    "linkedin": 0,
+    "instagram": 0
+  },
+  "retainedExclusions": 10,
+  "knownFailedDeliveryReceiptsExcluded": 8,
+  "priorGroupDuplicateReceiptsExcluded": 1,
+  "recipientPolicyRejectedAttemptsExcluded": 1,
+  "countingRule": "Unique verified new-company sends only. Drafts, unknown outcomes, historical/group contacts, explicit delivery failures and recipient-policy rejections are not valid new-company increments.",
+  "deliveryStatus": "Verified outgoing history does not prove final inbox delivery, buyer receipt or human reply.",
+  "replyRate": null,
+  "replyRateReason": "Full sent-cohort inbox observations and comparable response windows remain incomplete.",
+  "humanReplyImprovementProven": false,
+  "globalEmailDispatchResumed": false,
+  "unattendedHostVerified": false,
+  "executionTransport": "Codex in-app browser",
+  "currentExecutionStatus": "Browser control execution capability unavailable in current session; independent research and synchronization continue. This is not evidence of mailbox login or delivery failure.",
+  "receiptConsistencyAudit": {
+    "campaignRows": 118,
+    "dailyRows": 2,
+    "permanentRows": 2966,
+    "privateSiteStandaloneRows": 2809,
+    "runtimeHistoricalEvidenceRows": 203,
+    "allCampaignReceiptsExactlyOnceInBothStores": true,
+    "retainedExclusions": 10,
+    "prior116AndAllExclusionsPreserved": true
+  },
+  "privateSystemPublication": {
+    "status": "succeeded",
+    "audienceUnchanged": "owner-private",
+    "campaignConfirmed": 118,
+    "lastActualSendDataDate": "2026-10-28",
+    "verification": "Native successful publication plus exact live ledger hash/date matched the independently audited source. No private hashes or source revisions included."
+  },
+  "validation": {
+    "savedReceiptEvidenceAudit": "passed",
+    "independentPermanentRecordAudit": "passed",
+    "productionBuild": "passed",
+    "productionCodeChangedThisUpdate": false,
+    "browserPageReadbackPerformedThisUpdate": false
+  },
+  "privateCustomerDataIncluded": false,
+  "fullDataGitHubSync": "pending_explicit_private_repository_or_public_disclosure_authorization",
+  "currentSynchronizationPurpose": "Delayed catch-up of the missed2026-10-28 scheduled statistics snapshot; two previously confirmed records added since prior remote count116. Completion on time is not claimed.",
+  "scheduledWindowCompletionClaimed": false,
+  "missedScheduledDate": "2026-10-28",
+  "newUniqueCompaniesInThisPublication": 2,
+  "dataIdentity": {
+    "dataDate": "2026-10-28",
+    "timezone": "Asia/Shanghai",
+    "campaignTarget": 500,
+    "campaignConfirmed": 118,
+    "campaignRemaining": 382,
+    "dailyTarget": 100,
+    "dailyConfirmed": 2,
+    "dailyRemaining": 98,
+    "knownDeliveryFailuresExcluded": 8,
+    "priorGroupDuplicatesExcluded": 1,
+    "campaignChannels": {
+      "email": 94,
+      "linkedin": 10,
+      "instagram": 14
+    },
+    "dailyChannels": {
+      "email": 2,
+      "linkedin": 0,
+      "instagram": 0
+    },
+    "globalEmailDispatchResumed": false,
+    "unattendedHostVerified": false,
+    "recipientPolicyRejectionsExcluded": 1
+  },
+  "dataSummaryDigestAlgorithm": "sha256(JSON.stringify(dataIdentity)); fixed field order, anonymous counts only",
+  "dataSummaryDigest": "a5d8e3caffa90555e985a5df4ec02f75ac365cfcc7438e997d1750424f811dff"
+}
