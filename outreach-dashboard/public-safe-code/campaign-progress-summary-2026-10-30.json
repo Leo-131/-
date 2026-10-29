@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "snapshotDate": "2026-10-30",
+  "dataDate": "2026-10-30",
+  "campaignCheckpoint": {
+    "confirmed": 124,
+    "target": 500,
+    "remaining": 376,
+    "confirmedToday": 2,
+    "confirmedEmailRecords": 100,
+    "confirmedSocialRecords": 24
+  },
+  "report": {
+    "status": "cloud_verification_complete",
+    "liveCloudVerificationComplete": true,
+    "verifiedAtUtc": "2026-10-29T17:02:20Z",
+    "verificationScope": "Owner-authenticated live monthly report; permanent campaign checkpoint separately reconciled",
+    "reportCalculatedAtUtc": "2026-10-29T16:59:48.697Z",
+    "campaignCheckpointAtVerification": 124
+  },
+  "monthlyReconciliation": {
+    "reportingPeriod": "2026-10",
+    "uniqueOutreach": 335,
+    "periodUniqueReplyEntities": 5,
+    "matchedCurrentMonthSendQueue": 3,
+    "matchedHumanReplyEntities": 2,
+    "matchedAutomatedReplyEntities": 1,
+    "matchedUnknownReplyEntities": 0,
+    "observedSendQueueEntities": 3,
+    "unverifiedSendQueueEntities": 332,
+    "formalTotalReplyRate": null,
+    "formalHumanReplyRate": null,
+    "rateStatus": "Observation coverage incomplete; formal rates remain unverified.",
+    "scope": "Monthly report includes outreach outside the fixed 500-customer campaign."
+  },
+  "publication": {
+    "status": "cloud_verified_publication_authorized",
+    "repositoryVisibility": "public",
+    "visibilityVerifiedVia": "native GitHub repository metadata",
+    "contentScope": "anonymous campaign aggregates only",
+    "customerIdentitiesIncluded": false,
+    "customerContactDetailsIncluded": false,
+    "credentialsIncluded": false,
+    "privateCommitReferencesIncluded": false
+  },
+  "synchronization": {
+    "scope": "Anonymous campaign aggregates only",
+    "mode": "incremental_after_verified_sends",
+    "completeCustomerRecordsPublished": false,
+    "aggregateDataKey": "2026-10-30|124|500|376|2|100|24|335|5|3|332",
+    "privateSystemDeploymentVerified": true,
+    "trigger": "Active-session incremental synchronization; paused recurring jobs were not resumed"
+  }
+}
