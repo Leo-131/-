@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "snapshotDate": "2026-10-29",
+  "campaignCheckpoint": {
+    "confirmed": 119,
+    "target": 500,
+    "remaining": 381,
+    "confirmedToday": 1
+  },
+  "report": {
+    "status": "cloud_verification_complete",
+    "liveCloudVerificationComplete": true,
+    "verifiedAtUtc": "2026-10-29T13:49:29.073Z",
+    "verificationScope": "Owner-authenticated live report"
+  },
+  "codeChanges": {
+    "files": [
+      "server/alimail-ui-evidence.mjs",
+      "tests/alimail-ui-evidence.test.mjs"
+    ],
+    "summary": "Handle quoted image labels, standalone article signatures and exact bare mailto signatures while preserving body, link and send-state checks."
+  },
+  "tests": {
+    "scope": [
+      "tests/alimail-ui-evidence.test.mjs"
+    ],
+    "command": "node --test --test-reporter=spec tests/alimail-ui-evidence.test.mjs",
+    "passed": 29,
+    "total": 29,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "locallyReproduced": true
+  },
+  "publication": {
+    "status": "cloud_verified_publication_authorized",
+    "repositoryVisibility": "public",
+    "visibilityVerifiedVia": "native GitHub repository metadata",
+    "contentScope": "generic code patches and anonymous campaign aggregates",
+    "customerIdentitiesIncluded": false,
+    "customerContactDetailsIncluded": false,
+    "credentialsIncluded": false,
+    "privateCommitReferencesIncluded": false
+  },
+  "dataDate": "2026-10-29",
+  "monthlyReconciliation": {
+    "reportingPeriod": "2026-10",
+    "uniqueOutreach": 330,
+    "periodUniqueReplyEntities": 5,
+    "matchedCurrentMonthSendQueue": 3,
+    "matchedHumanReplyEntities": 2,
+    "matchedAutomatedReplyEntities": 1,
+    "matchedUnknownReplyEntities": 0,
+    "observedSendQueueEntities": 3,
+    "unverifiedSendQueueEntities": 327,
+    "formalTotalReplyRate": null,
+    "formalHumanReplyRate": null,
+    "rateStatus": "Observation coverage incomplete; formal rates remain unverified."
+  }
+}

@@ -1,0 +1,54 @@
+diff --git a/server/alimail-ui-evidence.mjs b/server/alimail-ui-evidence.mjs
+--- a/server/alimail-ui-evidence.mjs
++++ b/server/alimail-ui-evidence.mjs
+@@ -26,7 +26,18 @@ function readNodes(snapshot) {
+  const nodes=[],stack=[];
+  for(let line=0;line<raw.length;line++){
+   if(!raw[line].trim())continue;
+-  const m=raw[line].match(/^(\s*)-\s+([a-z][\w-]*|\/url)(?:\s+("(?:[^"\\]|\\.)*"))?(.*)$/i);
++  let roleLine=raw[line];
++  // AX quotes a complete image label as a YAML scalar when its name contains ": ".
++  // Decode only that non-text role; never reinterpret quoted body/control/href data.
++  const quoted=roleLine.match(/^(\s*-\s+)'((?:[^']|'')*)'(:?)\s*$/);
++  if(quoted){
++   const label=quoted[2].replace(/''/g,"'");
++   const img=label.match(/^img\s+("(?:[^"\\]|\\.)*")$/i);
++   if(!img)return null;
++   try {if(typeof JSON.parse(img[1])!=='string')return null;}catch{return null;}
++   roleLine=quoted[1]+label+quoted[3];
++  }
++  const m=roleLine.match(/^(\s*)-\s+([a-z][\w-]*|\/url)(?:\s+("(?:[^"\\]|\\.)*"))?(.*)$/i);
+   if(!m)return null;
+   const depth=m[1].length,role=m[2].toLowerCase(),suffix=m[4],colon=suffix.indexOf(':');
+   const attrs=colon<0?suffix:suffix.slice(0,colon);
+@@ -52,7 +63,15 @@ function pickerOpen(nodes) {
+    [n.name,n.value,...nodes.slice(i+1,subtreeEnd(nodes,i)).map(c=>c.name||c.value)].join(' '));
+  });
+ }
+-const textRole=node=>['generic','text','paragraph','heading'].includes(node.role);
++const textRole=node=>['generic','text','paragraph','heading','article'].includes(node.role);
++function bareMailtoMatches(href,label) {
++ if(!/^mailto:/i.test(href))return false;
++ let address;try {address=decodeURIComponent(href.slice(7));}catch{return false;}
++ // Deliberately accept only a bare ASCII mailbox, without headers or extra recipients.
++ if(address.length>254||address.indexOf('@')>64
++  ||!/^[a-z0-9_+-]+(?:\.[a-z0-9_+-]+)*@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(address))return false;
++ return address.toLowerCase()===label.toLowerCase();
++}
+ function content(nodes) {
+  const parts=[],links=[];let hrefs=0,plain=0;
+  for(let i=0;i<nodes.length;i++){
+@@ -60,8 +79,11 @@ function content(nodes) {
+   if(n.role==='link'){
+    const children=nodes.slice(i+1,subtreeEnd(nodes,i));
+    const urls=children.filter(c=>c.role==='/url');
+-   if(urls.length!==1||!/^https?:\/\/\S+$/i.test(urls[0].value))return {error:'link_href_missing_or_invalid'};
+-   parts.push(n.name||n.value);links.push(urls[0].value);hrefs++;i=subtreeEnd(nodes,i)-1;continue;
++   if(urls.length!==1)return {error:'link_href_missing_or_invalid'};
++   const href=urls[0].value,label=n.name||n.value,http=/^https?:\/\/\S+$/i.test(href);
++   if(!http&&(!bareMailtoMatches(href,label)||children.some(c=>c.role!=='/url')))
++    return {error:'link_href_missing_or_invalid'};
++   parts.push(label);if(http){links.push(href);hrefs++;}i=subtreeEnd(nodes,i)-1;continue;
+   }
+   if(!textRole(n))continue;
+   // Ignore a named container's roll-up when its text is already in descendants.

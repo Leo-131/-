@@ -1,0 +1,137 @@
+diff --git a/tests/alimail-ui-evidence.test.mjs b/tests/alimail-ui-evidence.test.mjs
+--- a/tests/alimail-ui-evidence.test.mjs
++++ b/tests/alimail-ui-evidence.test.mjs
+@@ -53,6 +53,133 @@ test('correct AX hrefs and visible body text are independently matched',()=>{
+   const r=check(snap);assert.equal(r.ok,true);assert.equal(r.evidence.linkEvidence,'ax_hrefs');
+ });
+ 
++const quotedImageFixture=()=>{
++  const href='https://materials.example.invalid/catalog?revision=2';
++  const body=['Dear Example Outdoor Team,','A fictional portable range.','Catalog: '+href,
++    'Sincerely','Example Sales'];
++  const snapshot=composer([],{subject:'Example Outdoor range',recipient:'buyer@example.invalid'})
++    .replace('- article\n',`- generic: Dear Example Outdoor Team,\n- generic: A fictional portable range.\n- text: "Catalog:"\n- link "${href}":\n  - /url: ${href}\n- article: Sincerely\n- generic: Example Sales\n- 'img "EXAMPLE PUMP: Maximum Power (5KPA, 67g, 300L/Min）"'\n- 'img "Example Sales''s logo: blue"'\n`);
++  return {snapshot,expected:{body:body.join('\n'),links:[href],subject:'Example Outdoor range',recipient:'buyer@example.invalid'}};
++};
++
++test('complete YAML single-quoted img labels preserve exact body and AX hrefs',()=>{
++  const fixture=quotedImageFixture();
++  const snapshot=fixture.snapshot.replace('- article: Sincerely','- generic: Sincerely');
++  const before=snapshot,r=check(snapshot,{expected:fixture.expected});
++  assert.equal(r.ok,true);assert.equal(snapshot,before);
++  assert.equal(r.evidence.bodyNormalized,fixture.expected.body.replaceAll('\n',' '));
++  assert.deepEqual(r.evidence.links,fixture.expected.links);
++  assert.equal(r.evidence.linkEvidence,'ax_hrefs');
++  assert.equal(r.actualHrefVerificationRequired,false);
++  assert.equal(r.maySend,false);assert.equal(r.mayRetrySend,false);
++});
++
++test('standalone article signature text is extracted without named container roll-up duplication',()=>{
++  const fixture=quotedImageFixture();
++  const snapshot=fixture.snapshot.replace(/^- 'img .*'\n/gm,'');
++  const direct=check(snapshot,{expected:fixture.expected});
++  assert.equal(direct.ok,true);
++  assert.equal(direct.evidence.bodyNormalized,fixture.expected.body.replaceAll('\n',' '));
++  assert.equal(check(snapshot.replace('- article: Sincerely','- article "Sincerely"'),
++    {expected:fixture.expected}).ok,true);
++  const nested=snapshot.replace('- article: Sincerely',
++    '- article "Sincerely":\n  - generic: Sincerely');
++  assert.equal(check(nested,{expected:fixture.expected}).ok,true);
++  const extra=snapshot.replace('- article: Sincerely','- article: Unapproved promise');
++  assert.ok(check(extra,{expected:fixture.expected}).reasons.includes('body_mismatch'));
++});
++
++test('quoted image and standalone article compatibility retain exact body and href gates',()=>{
++  const fixture=quotedImageFixture();
++  assert.equal(check(fixture.snapshot,{expected:fixture.expected}).ok,true);
++  for(const [from,to,reason] of [
++    ['A fictional portable range.','A fictional portable range!','body_mismatch'],
++    ['/url: '+fixture.expected.links[0],'/url: https://wrong.example.invalid/','links_mismatch'],
++  ])assert.ok(check(fixture.snapshot.replace(from,to),{expected:fixture.expected}).reasons.includes(reason));
++  const withDescendants=fixture.snapshot.replace(`- 'img "Example Sales''s logo: blue"'`,
++    `- 'img "Example Sales''s logo: blue"':\n  - generic: Unapproved promise\n  - link "Extra material":\n    - /url: https://extra.example.invalid/`);
++  const extra=check(withDescendants,{expected:fixture.expected});
++  assert.ok(extra.reasons.includes('body_mismatch'));assert.ok(extra.reasons.includes('links_mismatch'));
++});
++
++test('single-quoted role compatibility rejects malformed and unsupported pseudo nodes',()=>{
++  for(const line of [
++    `- 'img "Example logo"`,
++    `- 'img "Example logo"' trailing`,
++    `- 'img "Example Sales's logo"'`,
++    `- 'img "Example logo" garbage'`,
++    `- 'img "Invalid \\q escape"'`,
++    `- 'img "Example logo"; generic: extra body'`,
++    `- 'generic: extra body'`,
++    `- 'link "https://materials.example.invalid/"'`,
++  ]){
++    const snapshot=composer().replace('- article',line);
++    assert.deepEqual(check(snapshot).reasons,['invalid_snapshot_or_surface'],line);
++  }
++});
++
++const mailtoFixture=(surface='sent',href='mailto:Sales@example.invalid',label='Sales@example.invalid')=>{
++  const material='https://materials.example.invalid/catalog';
++  const body=`- generic: Dear Example Outdoor Team,\n- text: "Catalog:"\n- link "${material}":\n  - /url: ${material}\n- article: Sincerely\n- generic: Example Sales\n- link ${JSON.stringify(label)}:\n  - /url: ${href}`;
++  const expected={body:`Dear Example Outdoor Team, Catalog: ${material} Sincerely Example Sales Sales@example.invalid`,
++    links:[material],subject:'Example Outdoor range',recipient:'buyer@example.invalid'};
++  const snapshot=surface==='composer'
++    ?composer([],{subject:expected.subject,recipient:expected.recipient}).replace('- article\n',body+'\n')
++    :`- generic: 收件人：\n- generic: ${expected.recipient}\n- generic: 主 题：\n- generic: ${expected.subject}\n- iframe:\n${body.split('\n').map(line=>'  '+line).join('\n')}`;
++  return {snapshot,surface,expected,sendState:surface==='composer'?'prepared_not_sent':'send_unconfirmed'};
++};
++
++test('native bare mailto signature links preserve exact text in composer and Sent',()=>{
++  for(const surface of ['composer','sent'])for(const href of [
++    'mailto:Sales@example.invalid','MAILTO:sales@EXAMPLE.invalid','mailto:Sales%40example.invalid',
++  ]){
++    const fixture=mailtoFixture(surface,href),r=verifyAliMailUiEvidence(fixture);
++    assert.equal(r.ok,true,href);assert.equal(r.evidence.bodyNormalized,fixture.expected.body);
++    assert.deepEqual(r.evidence.links,fixture.expected.links);assert.equal(r.evidence.linkEvidence,'ax_hrefs');
++    assert.equal(r.actualHrefVerificationRequired,false);assert.equal(r.maySend,false);assert.equal(r.mayRetrySend,false);
++  }
++});
++
++test('signature mailto compatibility rejects non-bare, mismatched or unverified email hrefs',()=>{
++  for(const href of [
++    'mailto:','mailto:other@example.invalid','mailto:Sales@example.invalid?subject=Hello',
++    'mailto:Sales@example.invalid?cc=other@example.invalid','mailto:Sales@example.invalid#fragment',
++    'mailto:Sales@example.invalid,other@example.invalid','mailto:Sales@example.invalid;other@example.invalid',
++    'mailto:Sales@example.invalid%3Fsubject=Hello','mailto:Sales@example.invalid%0aBcc:other@example.invalid',
++    'mailto:%ZZ','mailto:Sales@@example.invalid','mailto:.Sales@example.invalid','mailto:Sales@-example.invalid',
++    'mailto:Sales@example','mailto:Sales@example.invalid/','tel:+10000000000','javascript:alert(1)',
++  ])for(const surface of ['composer','sent']){
++    const r=verifyAliMailUiEvidence(mailtoFixture(surface,href));
++    assert.deepEqual(r.reasons,['link_href_missing_or_invalid'],href);
++  }
++  for(const label of ['', 'Email us', ' Sales@example.invalid', 'Other@example.invalid'])
++    assert.deepEqual(verifyAliMailUiEvidence(mailtoFixture('sent',undefined,label)).reasons,
++      ['link_href_missing_or_invalid'],label);
++  const fixture=mailtoFixture();
++  assert.deepEqual(verifyAliMailUiEvidence({...fixture,snapshot:fixture.snapshot
++    .replace('    - /url: mailto:Sales@example.invalid','')}).reasons,['link_href_missing_or_invalid']);
++});
++
++test('native mailto signatures cannot hide extra text, material hrefs or weaken Send locks',()=>{
++  for(const surface of ['composer','sent']){
++    const fixture=mailtoFixture(surface),prefix=surface==='sent'?'  ':'';
++    const extra=fixture.snapshot.replace(prefix+'- article: Sincerely',
++      prefix+'- generic: An unapproved promise.\n'+prefix+'- article: Sincerely');
++    assert.ok(verifyAliMailUiEvidence({...fixture,snapshot:extra}).reasons.includes('body_mismatch'));
++    const wrong=fixture.snapshot.replace('/url: '+fixture.expected.links[0],'/url: https://wrong.example.invalid/');
++    assert.ok(verifyAliMailUiEvidence({...fixture,snapshot:wrong}).reasons.includes('links_mismatch'));
++    for(const nested of ['- generic: An unapproved promise.',
++      '- generic: https://extra.example.invalid/',
++      '- link "Extra material":\n  - /url: https://extra.example.invalid/']){
++      const replacement='- /url: mailto:Sales@example.invalid\n'+nested.split('\n').map(line=>prefix+'  '+line).join('\n');
++      const snapshot=fixture.snapshot.replace('- /url: mailto:Sales@example.invalid',replacement);
++      assert.equal(verifyAliMailUiEvidence({...fixture,snapshot}).ok,false,nested);
++    }
++  }
++  const fixture=mailtoFixture('composer');
++  assert.deepEqual(verifyAliMailUiEvidence({...fixture,sendState:'send_unconfirmed'}).reasons,['send_state_locked']);
++});
++
+ test('plain composer URLs explicitly do not claim an actual href read',()=>{
+   const r=check(composer());assert.equal(r.ok,true);assert.equal(r.evidence.linkEvidence,'visible_url_text');
+   assert.equal(r.actualHrefVerificationRequired,true);
