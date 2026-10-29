@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "snapshotDate": "2026-10-29",
+  "reportingPeriod": "2026-10",
+  "statisticsScope": {
+    "outreachUnit": "月度报表内的去重触达对象；同一对象只计一次。",
+    "replyUnit": "月内已记录回复的去重对象；期间回复与本月发送队列匹配分别统计。",
+    "matchedReplyClassification": "仅对已匹配本月发送队列的回复区分人工与自动回复。",
+    "unmatchedReplyTreatment": "未匹配期间回复单列，不直接作为本月发送队列回复率的分子。",
+    "observationCoverage": "本月发送队列中已有回复观察记录的对象数与去重触达总数分别列示；其余待核验。",
+    "formalRateStatus": "观察覆盖未完成，正式总回复率与正式人工回复率保持空值。"
+  },
+  "monthlyReconciliation": {
+    "uniqueOutreach": 329,
+    "periodUniqueReplyEntities": 5,
+    "matchedCurrentMonthSendQueue": 3,
+    "matchedHumanReplyEntities": 2,
+    "matchedAutomatedReplyEntities": 1,
+    "unmatchedPeriodReplyEntities": 2,
+    "observedSendQueueEntities": 3,
+    "unverifiedSendQueueEntities": 326,
+    "formalTotalReplyRate": null,
+    "formalHumanReplyRate": null
+  },
+  "recordCorrection": {
+    "existingHumanRepliesBackfilled": 1,
+    "newSends": 0,
+    "description": "一条既有人工回复被补记录，未新增发送。",
+    "effectInterpretation": "这是历史记录补全，不代表实际营销效果改善。"
+  },
+  "campaignCheckpoint": {
+    "confirmed": 118,
+    "target": 500,
+    "remaining": 382,
+    "confirmedToday": 0
+  }
+}
