@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "upgradeDate": "2026-10-29",
+  "title": "Browser Work settings permission recovery",
+  "publicationScope": "Anonymous generic code and regression tests only",
+  "patch": {
+    "file": "browser-work-settings-recovery-2026-10-29.patch",
+    "sha256": "78bbbc8c9100e71a3495b25d4192bef538bf3a777fcdbf4bdf32ac81c2cd92ff",
+    "format": "Unified diff with one line of context and no private blob identifiers",
+    "prerequisite": "Apply to the corresponding existing browser recovery code and tests; this is not a standalone application",
+    "files": [
+      "server/browser-recovery-executor.mjs",
+      "server/browser-recovery.mjs",
+      "tests/browser-recovery-executor.test.mjs",
+      "tests/browser-recovery.test.mjs",
+      "tests/build-data-chunks.test.mjs",
+      "tests/today-outreach.test.mjs"
+    ],
+    "sourceCodeTextModifiedForPublication": false,
+    "privateOperationalDocumentationIncluded": false
+  },
+  "behavior": [
+    "Recognize explicit browser-disabled-by-Work-settings diagnostics separately from empty inventory and transport failures.",
+    "Return a settings action without selecting or falling back to another browser.",
+    "Stop entry denials before host and checkpoint callbacks while preserving checkpoint identity, attempt flags and unknown-send locks.",
+    "Preserve the settings-denial classification when read-only inspection or session verification reports it.",
+    "Update two test fixtures for the evidence module and AbortController."
+  ],
+  "validation": {
+    "relatedRecoveryTests": {
+      "passed": 76,
+      "total": 76
+    },
+    "initialFullSuite": {
+      "passed": 673,
+      "total": 675,
+      "failed": 2,
+      "failureScope": "Two test fixtures subsequently corrected"
+    },
+    "postFixtureRepairTargetedTests": {
+      "passed": 8,
+      "total": 8
+    },
+    "productionBuild": "passed",
+    "fullSuiteRerunAfterFixtureRepair": false,
+    "fullSuiteAllGreenClaimed": false,
+    "publicPatchApplyCheck": "passed against a temporary fixture of the corresponding predecessor files",
+    "appliedPatchMatchesTargetCodeTextIgnoringLineEndings": true,
+    "targetFilesChecked": 6,
+    "lineEndingNormalizationPublished": false,
+    "publicPatchPrivacyReview": "passed static checks and manual diff review"
+  },
+  "acceptanceBoundary": "Synthetic tests and a successful build do not establish browser availability, account login, provider delivery, new send authorization or customer contact.",
+  "anonymousCampaignCheckpoint": {
+    "confirmed": 118,
+    "target": 500,
+    "confirmedToday": 0,
+    "newSendsFromThisUpgrade": 0
+  },
+  "privacy": {
+    "customerIdentitiesIncluded": false,
+    "emailAddressesIncluded": false,
+    "messageBodiesIncluded": false,
+    "credentialsIncluded": false,
+    "privateSourceRevisionIncluded": false,
+    "privateDeploymentIdentifiersIncluded": false
+  }
+}

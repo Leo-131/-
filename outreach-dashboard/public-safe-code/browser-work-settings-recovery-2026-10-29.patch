@@ -1,0 +1,213 @@
+diff --git a/server/browser-recovery-executor.mjs b/server/browser-recovery-executor.mjs
+--- a/server/browser-recovery-executor.mjs
++++ b/server/browser-recovery-executor.mjs
+@@ -42,3 +42,3 @@ export async function executeLoginRecovery(input={}) {
+  const selected=recoveryDecision({inventory:input.inventory||[],
+-  requestedBrowser:input.requestedBrowser??'iab',sendState:input.sendState??'prepared_not_sent'});
++  requestedBrowser:input.requestedBrowser??'iab',sendState:input.sendState??'prepared_not_sent',error:input.error??null});
+  // A mismatched or legacy checkpoint must be inspected, never reset/rebound.
+@@ -64,9 +64,10 @@ async function runLoginRecovery({adapter,inventory=[],origin,sessionId,expectedA
+  requestedBrowser='iab',sendState='prepared_not_sent',checkpoint={},saveCheckpoint,
+- timeoutMs=10000}={},operation) {
+- if(!checkpoint||typeof checkpoint!=='object')return {status:'checkpoint_required',sendPerformed:false,maySend:false};
+- let state=Object.fromEntries(bindingFields.filter(key=>validIdentity(checkpoint[key]))
+-  .map(key=>[key,checkpoint[key]]));
++ timeoutMs=10000,error=null}={},operation) {
++ const checkpointValid=checkpoint&&typeof checkpoint==='object';
++ const suppliedCheckpoint=checkpointValid?checkpoint:{};
++ let state=Object.fromEntries(bindingFields.filter(key=>validIdentity(suppliedCheckpoint[key]))
++  .map(key=>[key,suppliedCheckpoint[key]]));
+  for(const key of ['focusAttempted','submitAttempted'])
+-  if(typeof checkpoint[key]==='boolean')state[key]=checkpoint[key];
+- const lifecycle=lifecycleState(checkpoint);
++  if(typeof suppliedCheckpoint[key]==='boolean')state[key]=suppliedCheckpoint[key];
++ const lifecycle=lifecycleState(suppliedCheckpoint);
+  if(lifecycle)state={...state,...lifecycle};
+@@ -76,2 +77,4 @@ async function runLoginRecovery({adapter,inventory=[],origin,sessionId,expectedA
+   const code=classifyBrowserError(error);
++  if(code==='browser_disabled_by_settings')return {...result('manual_verification_required'),code,
++   userAction:'enable_local_browser_use_in_work_settings',retryAllowed:false,fallbackAllowed:false};
+   if(['security_policy_denied','captcha','certificate_warning','mfa','authorization_expired','risk_control'].includes(code))
+@@ -82,2 +85,9 @@ async function runLoginRecovery({adapter,inventory=[],origin,sessionId,expectedA
+  };
++ // A current permission denial vetoes stale inventory/adapters before any read,
++ // checkpoint write, login action or mutex ownership. Never route around it.
++ const entryError=classifyBrowserError(error);
++ if(['browser_disabled_by_settings','security_policy_denied','captcha','certificate_warning',
++  'mfa','authorization_expired','risk_control'].includes(entryError))return failure(error);
++ if(entryError==='tool_unavailable')return {...result('tool_unavailable'),code:entryError};
++ if(!checkpointValid)return {status:'checkpoint_required',sendPerformed:false,maySend:false};
+  if(!['prepared_not_sent','not_started'].includes(sendState))return result('reconcile_sent_only');
+diff --git a/server/browser-recovery.mjs b/server/browser-recovery.mjs
+--- a/server/browser-recovery.mjs
++++ b/server/browser-recovery.mjs
+@@ -21,2 +21,4 @@ export function classifyBrowserError(error) {
+  const text=typeof error==='string'?error:error?.message||'';
++ if(error?.code==='BROWSER_DISABLED_BY_SETTINGS'
++  ||/\bbrowser_disabled_by_settings\b|\blocal browser use is disabled in work settings\b/i.test(text))return 'browser_disabled_by_settings';
+  if(/security_policy_denied|security policy|URL policy|authority.*(?:denied|not grant)|not.*acquire authority/i.test(text))return 'security_policy_denied';
+@@ -49,2 +51,4 @@ export function recoveryDecision({inventory=[],error=null,attempts=0,sendState='
+   extensionInstanceId:browser?.metadata?.extensionInstanceId??null,maySend:false});
++ if(error==='browser_disabled_by_settings')return {...result('handoff_required'),code:error,
++  userAction:'enable_local_browser_use_in_work_settings',retryAllowed:false,fallbackAllowed:false};
+  if(['security_policy_denied','captcha','certificate_warning','mfa','authorization_expired','risk_control'].includes(error))return result('handoff_required');
+diff --git a/tests/browser-recovery-executor.test.mjs b/tests/browser-recovery-executor.test.mjs
+--- a/tests/browser-recovery-executor.test.mjs
++++ b/tests/browser-recovery-executor.test.mjs
+@@ -193 +193,84 @@ test('a Runtime read deadline cannot release an unresolved checkpoint write or u
+ });
++
++const settingsDisabledDiagnostic='Browsers: Error: Local browser use is disabled in Work settings';
++let settingsFixtureNumber=0;
++function settingsFixture() {
++ const f=fixture(),browserId='settings-denial-iab-'+settingsFixtureNumber++;
++ f.input.inventory=[{id:browserId,type:'iab'}];
++ f.input.checkpoint={...checkpoint,browserId};
++ return f;
++}
++function assertSettingsDenial(result) {
++ assert.equal(result.status,'manual_verification_required');
++ assert.equal(result.code,'browser_disabled_by_settings');
++ assert.equal(result.userAction,'enable_local_browser_use_in_work_settings');
++ assert.equal(result.retryAllowed,false);assert.equal(result.fallbackAllowed,false);
++ assert.equal(result.maySend,false);assert.equal(result.sendPerformed,false);
++ assert.equal(result.historyRecheckRequired,true);
++}
++
++test('a current Work settings denial stops before every host callback and preserves attempted flags',async()=>{
++ for(const error of [settingsDisabledDiagnostic,new Error(settingsDisabledDiagnostic),'browser_disabled_by_settings']) {
++  for(const attempts of [{focusAttempted:false,submitAttempted:false},
++   {focusAttempted:true,submitAttempted:false},{focusAttempted:true,submitAttempted:true}]) {
++   for(const surface of ['iab','dedicated-chrome','empty']) {
++    const f=settingsFixture();f.input.error=error;
++    f.input.checkpoint={...f.input.checkpoint,...attempts};
++    if(surface==='dedicated-chrome') {
++     f.input.requestedBrowser='dedicated-chrome';
++     f.input.inventory=[{id:f.input.checkpoint.browserId,type:'extension',
++      metadata:{extensionInstanceId:'0792bf78-fb6c-436c-a1c6-eaa2994a2d8e'}}];
++    }else if(surface==='empty')f.input.inventory=[];
++    const before=structuredClone(f.input.checkpoint),result=await executeLoginRecovery(f.input);
++    assertSettingsDenial(result);
++    assert.deepEqual(result.checkpoint,before);assert.deepEqual(f.input.checkpoint,before);
++    assert.deepEqual(f.calls,[]);assert.deepEqual(f.saved,[]);
++   }
++  }
++ }
++});
++
++test('an explicit Work settings denial is retained even when no browser adapter is available',async()=>{
++ const f=settingsFixture();f.input.error=settingsDisabledDiagnostic;
++ f.input.checkpoint={...f.input.checkpoint,focusAttempted:true,submitAttempted:true};
++ const before=structuredClone(f.input.checkpoint),result=await executeLoginRecovery({...f.input,adapter:undefined});
++ assertSettingsDenial(result);assert.deepEqual(result.checkpoint,before);
++ assert.deepEqual(f.calls,[]);assert.deepEqual(f.saved,[]);
++});
++
++test('a Work settings denial never replays an unknown send or resets its login checkpoint',async()=>{
++ for(const sendState of ['send_unconfirmed','send_clicked_outcome_unknown_do_not_resend']) {
++  const f=settingsFixture();f.input.checkpoint={...f.input.checkpoint,focusAttempted:true,submitAttempted:true};
++  const before=structuredClone(f.input.checkpoint),result=await executeLoginRecovery({...f.input,
++   sendState,error:settingsDisabledDiagnostic});
++  assert.ok(['manual_verification_required','reconcile_sent_only'].includes(result.status));
++  if(result.status==='manual_verification_required')assertSettingsDenial(result);
++  assert.equal(result.maySend,false);assert.equal(result.sendPerformed,false);
++  assert.deepEqual(result.checkpoint,before);assert.deepEqual(f.calls,[]);assert.deepEqual(f.saved,[]);
++ }
++});
++
++test('actual inspect and account-verification Work settings denials keep their classification',async()=>{
++ for(const error of [settingsDisabledDiagnostic,new Error(settingsDisabledDiagnostic),'browser_disabled_by_settings']) {
++  for(const stage of ['inspect','verifySession']) {
++   const f=settingsFixture();f.input.checkpoint={...f.input.checkpoint,focusAttempted:true,submitAttempted:true};
++   f.adapter.inspect=async()=>{
++    f.calls.push('inspect');if(stage==='inspect')throw error;
++    return {origin,authorizedSameOrigin:true,formVisible:false,authenticated:true,challenge:'none'};
++   };
++   f.adapter.verifySession=async()=>{f.calls.push('verify');throw error;};
++   const before=structuredClone(f.input.checkpoint),result=await executeLoginRecovery(f.input);
++   assertSettingsDenial(result);assert.deepEqual(result.checkpoint,before);assert.deepEqual(f.saved,[]);
++   assert.deepEqual(f.calls,stage==='inspect'?['inspect']:['inspect','verify']);
++  }
++ }
++});
++
++test('without an explicit denial an empty host inventory remains a connection problem',async()=>{
++ const f=settingsFixture(),before=structuredClone(f.input.checkpoint);
++ const result=await executeLoginRecovery({...f.input,inventory:[]});
++ assert.equal(result.status,'connection_required');assert.notEqual(result.code,'browser_disabled_by_settings');
++ assert.notEqual(result.userAction,'enable_local_browser_use_in_work_settings');
++ assert.equal(result.maySend,false);assert.equal(result.sendPerformed,false);
++ assert.deepEqual(result.checkpoint,before);assert.deepEqual(f.calls,[]);assert.deepEqual(f.saved,[]);
++});
+diff --git a/tests/browser-recovery.test.mjs b/tests/browser-recovery.test.mjs
+--- a/tests/browser-recovery.test.mjs
++++ b/tests/browser-recovery.test.mjs
+@@ -257 +257,52 @@ test('normal login cannot expand origins authorization challenge handling or unk
+ });
++
++const settingsDisabledDiagnostic='Browsers: Error: Local browser use is disabled in Work settings';
++test('an explicit Work settings browser denial has its own stable classification',()=>{
++ for(const message of [settingsDisabledDiagnostic,'Local browser use is disabled in Work settings',
++  'browser_disabled_by_settings']) {
++  for(const error of [message,new Error(message)])
++   assert.equal(classifyBrowserError(error),'browser_disabled_by_settings');
++ }
++ assert.equal(classifyBrowserError('browser_execution_tool_unavailable'),'tool_unavailable');
++});
++
++test('a Work settings denial vetoes stale browser selection and pending recovery without fallback',()=>{
++ for(const error of [settingsDisabledDiagnostic,new Error(settingsDisabledDiagnostic),'browser_disabled_by_settings']) {
++  for(const inventory of [[],[dedicated],[{id:'old-iab',type:'iab'},dedicated]]) {
++   for(const requestedBrowser of [null,'iab','dedicated-chrome']) {
++    for(const pending of [{},{recoveryState:'pending',recoveryHandle:{id:'old-operation',live:true}}]) {
++     const result=recoveryDecision({inventory,error,requestedBrowser,...pending});
++     assert.equal(result.action,'handoff_required');
++     assert.equal(result.code,'browser_disabled_by_settings');
++     assert.equal(result.userAction,'enable_local_browser_use_in_work_settings');
++     assert.equal(result.browserId,null);assert.equal(result.extensionInstanceId,null);
++     assert.equal(result.retryAllowed,false);assert.equal(result.fallbackAllowed,false);
++     assert.equal(result.maySend,false);
++    }
++   }
++  }
++ }
++});
++
++test('a Work settings denial cannot turn an unknown send into another browser operation',()=>{
++ for(const sendState of ['send_unconfirmed','send_clicked_outcome_unknown_do_not_resend']) {
++  const result=recoveryDecision({inventory:[dedicated,{id:'old-iab',type:'iab'}],
++   error:settingsDisabledDiagnostic,sendState,recoveryState:'pending',
++   recoveryHandle:{id:'old-operation',live:true}});
++  assert.equal(result.action,'handoff_required');assert.equal(result.code,'browser_disabled_by_settings');
++  assert.equal(result.browserId,null);assert.equal(result.maySend,false);
++  assert.equal(result.retryAllowed,false);assert.equal(result.fallbackAllowed,false);
++ }
++});
++
++test('an empty inventory alone does not imply that Work settings disabled browser use',()=>{
++ for(const error of [null,undefined,'empty_tabs']) {
++  const result=recoveryDecision({inventory:[],error});
++  assert.equal(result.action,'await_connection');assert.equal(result.browserId,null);
++  assert.notEqual(result.code,'browser_disabled_by_settings');
++  assert.notEqual(result.userAction,'enable_local_browser_use_in_work_settings');
++ }
++ for(const diagnostic of ['Browser settings are unavailable',
++  'Local browser use is disabled on this website','browser disabled by an unknown extension'])
++  assert.equal(classifyBrowserError(diagnostic),'unknown_failure');
++});
+diff --git a/tests/build-data-chunks.test.mjs b/tests/build-data-chunks.test.mjs
+--- a/tests/build-data-chunks.test.mjs
++++ b/tests/build-data-chunks.test.mjs
+@@ -47,3 +47,3 @@ test('the actual build uses chunks in both temporary entries while retaining bas
+  fs.writeFileSync(path.join(dir,'web/outreach-dashboard.html'),html);
+- for(const file of ['worker.mjs','state-merge.mjs','progress.mjs','model-router.mjs','browser-recovery.mjs','browser-recovery-executor.mjs','execution-resilience.mjs','access.mjs','backups.mjs','development-tasks.mjs','ai-company-bridge.mjs','task-mcp.mjs'])fs.writeFileSync(path.join(dir,'server',file),'// fixture');
++ for(const file of ['worker.mjs','state-merge.mjs','progress.mjs','model-router.mjs','browser-recovery.mjs','browser-recovery-executor.mjs','alimail-ui-evidence.mjs','execution-resilience.mjs','access.mjs','backups.mjs','development-tasks.mjs','ai-company-bridge.mjs','task-mcp.mjs'])fs.writeFileSync(path.join(dir,'server',file),'// fixture');
+  fs.writeFileSync(path.join(dir,'.openai/hosting.json'),'{}');
+diff --git a/tests/today-outreach.test.mjs b/tests/today-outreach.test.mjs
+--- a/tests/today-outreach.test.mjs
++++ b/tests/today-outreach.test.mjs
+@@ -14,3 +14,3 @@ test('today confirmed outreach reaches reports and is removed from new-contact q
+   const auth=await authenticatedPreview(origin);
+-  dom=await JSDOM.fromURL(origin+'/?view=queue&report=monthly&period=2026-09-28',{cookieJar:auth.cookieJar,runScripts:'dangerously',resources:new Loader(),virtualConsole:new VirtualConsole(),beforeParse(w){w.fetch=auth.fetcher;w.AbortSignal=AbortSignal;w.TextEncoder=TextEncoder;w.TextDecoder=TextDecoder;}});
++  dom=await JSDOM.fromURL(origin+'/?view=queue&report=monthly&period=2026-09-28',{cookieJar:auth.cookieJar,runScripts:'dangerously',resources:new Loader(),virtualConsole:new VirtualConsole(),beforeParse(w){w.fetch=auth.fetcher;w.AbortSignal=AbortSignal;w.AbortController=AbortController;w.TextEncoder=TextEncoder;w.TextDecoder=TextDecoder;}});
+   for(let i=0;i<300&&!dom.window.__outreachTest;i++)await new Promise(r=>setTimeout(r,50));
