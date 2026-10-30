@@ -3,20 +3,23 @@
   "snapshotDate": "2026-10-30",
   "dataDate": "2026-10-30",
   "campaignCheckpoint": {
-    "confirmed": 124,
+    "confirmed": 123,
     "target": 500,
-    "remaining": 376,
-    "confirmedToday": 2,
-    "confirmedEmailRecords": 100,
-    "confirmedSocialRecords": 24
+    "remaining": 377,
+    "confirmedToday": 1,
+    "confirmedEmailRecords": 99,
+    "confirmedSocialRecords": 24,
+    "excludedReceipts": 11
   },
   "report": {
-    "status": "cloud_verification_complete",
-    "liveCloudVerificationComplete": true,
+    "status": "delivery_correction_cloud_verified_monthly_report_not_recomputed",
+    "liveCloudVerificationComplete": false,
     "verifiedAtUtc": "2026-10-29T17:02:20Z",
-    "verificationScope": "Owner-authenticated live monthly report; permanent campaign checkpoint separately reconciled",
+    "verificationScope": "Authenticated native cloud progress-source hash verified. Monthly metrics remain the prior verified snapshot; browser report was not re-observed.",
     "reportCalculatedAtUtc": "2026-10-29T16:59:48.697Z",
-    "campaignCheckpointAtVerification": 124
+    "campaignCheckpointAtVerification": 123,
+    "lastMonthlyReportVerificationAtUtc": "2026-10-29T17:02:20Z",
+    "deliveryCorrectionVerifiedAtUtc": "2026-10-30T06:20:36.971Z"
   },
   "monthlyReconciliation": {
     "reportingPeriod": "2026-10",
@@ -31,7 +34,10 @@
     "formalTotalReplyRate": null,
     "formalHumanReplyRate": null,
     "rateStatus": "Observation coverage incomplete; formal rates remain unverified.",
-    "scope": "Monthly report includes outreach outside the fixed 500-customer campaign."
+    "scope": "Monthly report includes outreach outside the fixed 500-customer campaign.",
+    "dataAsOfUtc": "2026-10-29T16:59:48.697Z",
+    "observationStatus": "last_verified_snapshot_not_recomputed_for_this_correction",
+    "includesHistoricalSentSubmissions": true
   },
   "publication": {
     "status": "cloud_verified_publication_authorized",
@@ -45,10 +51,23 @@
   },
   "synchronization": {
     "scope": "Anonymous campaign aggregates only",
-    "mode": "incremental_after_verified_sends",
+    "mode": "incremental_verified_delivery_failure_correction",
     "completeCustomerRecordsPublished": false,
-    "aggregateDataKey": "2026-10-30|124|500|376|2|100|24|335|5|3|332",
+    "aggregateDataKey": "2026-10-30|123|500|377|1|99|24|335|5|3|332|rejection-correction-1",
     "privateSystemDeploymentVerified": true,
-    "trigger": "Active-session incremental synchronization; paused recurring jobs were not resumed"
+    "trigger": "active_session_verified_rejection_correction",
+    "privateCloudSourceHashVerified": true,
+    "fullCustomerDataStatus": "retained_privately_not_published"
+  },
+  "updatedAtUtc": "2026-10-30T06:20:36.971Z",
+  "deliveryCorrection": {
+    "verifiedRejectedSubmissionsDelta": 1,
+    "effectiveNewCustomersDelta": -1,
+    "historyPreserved": true,
+    "automaticResendBlocked": true,
+    "disposition": "verified_recipient_policy_rejection",
+    "smtpStatus": "554 5.7.1",
+    "globalSenderFailureEstablished": false,
+    "deliveryRecoveryVerified": false
   }
 }
